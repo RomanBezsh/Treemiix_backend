@@ -1,0 +1,6 @@
+@CloneAmazonBack_HostAddress = http://localhost:5038
+
+GET {{CloneAmazonBack_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
