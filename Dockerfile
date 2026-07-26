@@ -7,15 +7,16 @@ EXPOSE 8081
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["CloneAmazonBack/CloneAmazonBack.csproj", "CloneAmazonBack/"]
-RUN dotnet restore "CloneAmazonBack/CloneAmazonBack.csproj"
+
+COPY ["CloneAmazonBack.csproj", "./"]
+RUN dotnet restore "CloneAmazonBack.csproj"
+
 COPY . .
-WORKDIR "/src/CloneAmazonBack"
-RUN dotnet build "./CloneAmazonBack.csproj" -c $BUILD_CONFIGURATION -o /app/build
+RUN dotnet build "CloneAmazonBack.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./CloneAmazonBack.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "CloneAmazonBack.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
