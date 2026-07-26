@@ -1,7 +1,6 @@
 namespace CloneAmazonBack.Models.Dtos;
 
 public record CreateAddressRequest(
-    Guid UserId,
     string Country,
     string City,
     string Street,

@@ -164,6 +164,8 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<CartItem>(entity =>
         {
+            entity.Property(i => i.Price).HasColumnType("decimal(18,2)");
+
             entity.HasOne(i => i.Cart)
                 .WithMany(c => c.Items)
                 .HasForeignKey(i => i.CartId)

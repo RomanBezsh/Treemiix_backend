@@ -1,4 +1,5 @@
 using CloneAmazonBack.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OrderItemsController : ControllerBase
 {
     private readonly AppDbContext _context;

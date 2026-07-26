@@ -1,6 +1,8 @@
 using CloneAmazonBack.Data;
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UserProfilesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -17,9 +20,10 @@ public class UserProfilesController : ControllerBase
         _context = context;
     }
 
-    [HttpGet("{userId}")]
-    public async Task<IActionResult> GetByUser(Guid userId)
+    [HttpGet]
+    public async Task<IActionResult> GetMyProfile()
     {
+        var userId = User.GetUserId();
         var profile = await _context.UserProfiles
             .FirstOrDefaultAsync(p => p.UserId == userId);
 
@@ -30,11 +34,9 @@ public class UserProfilesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(Guid userId, UpdateProfileRequest request)
+    public async Task<IActionResult> Create(UpdateProfileRequest request)
     {
-        var userExists = await _context.Users.AnyAsync(u => u.Id == userId);
-        if (!userExists)
-            return NotFound("User not found");
+        var userId = User.GetUserId();
 
         var existingProfile = await _context.UserProfiles.FindAsync(userId);
         if (existingProfile != null)
@@ -50,12 +52,13 @@ public class UserProfilesController : ControllerBase
         _context.UserProfiles.Add(profile);
         await _context.SaveChangesAsync();
 
-        return CreatedAtAction(nameof(GetByUser), new { userId }, profile);
+        return CreatedAtAction(nameof(GetMyProfile), null, profile);
     }
 
-    [HttpPut("{userId}")]
-    public async Task<IActionResult> Update(Guid userId, UpdateProfileRequest request)
+    [HttpPut]
+    public async Task<IActionResult> Update(UpdateProfileRequest request)
     {
+        var userId = User.GetUserId();
         var profile = await _context.UserProfiles.FindAsync(userId);
 
         if (profile == null)

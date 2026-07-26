@@ -1,7 +1,6 @@
 namespace CloneAmazonBack.Models.Dtos;
 
 public record CreateSellerRequest(
-    Guid UserId,
     string StoreName,
     string StoreSlug,
     string? LogoUrl,
@@ -52,7 +51,6 @@ public record CreatePromoCodeRequest(
 );
 
 public record CreateOrderRequest(
-    Guid UserId,
     Guid SellerId,
     Guid? PromoCodeId,
     string ShippingAddress,
@@ -71,25 +69,21 @@ public record CreateOrderItemRequest(
 
 public record CreateGiftCardRequest(
     decimal InitialBalance,
-    Guid PurchasedByUserId,
     DateTime? ExpiresAt
 );
 
 public record CreateQuestionRequest(
     Guid ProductId,
-    Guid UserId,
     string Content
 );
 
 public record CreateAnswerRequest(
     Guid QuestionId,
-    Guid UserId,
     string Content,
     bool IsOfficialAnswer
 );
 
 public record VoteRequest(
     Guid QuestionId,
-    Guid UserId,
     short Value
 );

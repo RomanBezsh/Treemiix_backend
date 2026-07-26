@@ -2,6 +2,7 @@ using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OrdersController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,11 +21,12 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? userId, [FromQuery] Guid? sellerId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? sellerId)
     {
+        var userId = User.GetUserId();
         var orders = await _context.Orders
             .Include(o => o.Items)
-            .WhereIf(userId, o => o.UserId == userId!.Value)
+            .Where(o => o.UserId == userId)
             .WhereIf(sellerId, o => o.SellerId == sellerId!.Value)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
@@ -48,10 +51,11 @@ public class OrdersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateOrderRequest request)
     {
+        var userId = User.GetUserId();
         var order = new Order
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
+            UserId = userId,
             SellerId = request.SellerId,
             PromoCodeId = request.PromoCodeId,
             Status = OrderStatus.Pending,

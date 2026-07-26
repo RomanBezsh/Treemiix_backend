@@ -2,6 +2,7 @@ using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CategoriesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -18,6 +20,7 @@ public class CategoriesController : ControllerBase
         _context = context;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -28,6 +31,7 @@ public class CategoriesController : ControllerBase
         return Ok(categories);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {

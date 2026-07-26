@@ -2,6 +2,7 @@ using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class QuestionVotesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -21,8 +23,9 @@ public class QuestionVotesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Vote(VoteRequest request)
     {
+        var userId = User.GetUserId();
         var existingVote = await _context.QuestionVotes
-            .FirstOrDefaultAsync(v => v.QuestionId == request.QuestionId && v.UserId == request.UserId);
+            .FirstOrDefaultAsync(v => v.QuestionId == request.QuestionId && v.UserId == userId);
 
         if (existingVote != null)
         {
@@ -34,7 +37,7 @@ public class QuestionVotesController : ControllerBase
             {
                 Id = Guid.NewGuid(),
                 QuestionId = request.QuestionId,
-                UserId = request.UserId,
+                UserId = userId,
                 Value = request.Value
             });
         }

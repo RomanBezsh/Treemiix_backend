@@ -1,6 +1,7 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProductGalleriesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -17,6 +19,7 @@ public class ProductGalleriesController : ControllerBase
         _context = context;
     }
 
+    [AllowAnonymous]
     [HttpGet("byproduct/{productId}")]
     public async Task<IActionResult> GetByProduct(Guid productId)
     {

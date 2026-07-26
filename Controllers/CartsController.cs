@@ -1,5 +1,7 @@
 using CloneAmazonBack.Data;
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +9,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class CartsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -16,9 +19,10 @@ public class CartsController : ControllerBase
         _context = context;
     }
 
-    [HttpGet("byuser/{userId}")]
-    public async Task<IActionResult> GetByUser(Guid userId)
+    [HttpGet("my")]
+    public async Task<IActionResult> GetMyCart()
     {
+        var userId = User.GetUserId();
         var cart = await _context.Carts
             .Include(c => c.Items)
             .ThenInclude(i => i.Product)
@@ -44,8 +48,9 @@ public class CartsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(Guid userId)
+    public async Task<IActionResult> Create()
     {
+        var userId = User.GetUserId();
         var existingCart = await _context.Carts.AnyAsync(c => c.UserId == userId);
         if (existingCart)
             return Conflict("User already has a cart");

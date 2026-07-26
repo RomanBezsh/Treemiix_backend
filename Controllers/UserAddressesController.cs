@@ -1,6 +1,8 @@
 using CloneAmazonBack.Data;
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UserAddressesController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -20,6 +23,10 @@ public class UserAddressesController : ControllerBase
     [HttpGet("byuser/{userId}")]
     public async Task<IActionResult> GetByUser(Guid userId)
     {
+        var currentUserId = User.GetUserId();
+        if (userId != currentUserId)
+            return Forbid();
+
         var addresses = await _context.UserAddresses
             .Where(a => a.UserId == userId)
             .ToListAsync();
@@ -41,10 +48,12 @@ public class UserAddressesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateAddressRequest request)
     {
+        var userId = User.GetUserId();
+
         if (request.IsDefault)
         {
             var currentDefault = await _context.UserAddresses
-                .Where(a => a.UserId == request.UserId && a.IsDefault)
+                .Where(a => a.UserId == userId && a.IsDefault)
                 .FirstOrDefaultAsync();
 
             if (currentDefault != null)
@@ -54,7 +63,7 @@ public class UserAddressesController : ControllerBase
         var address = new UserAddress
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
+            UserId = userId,
             Country = request.Country,
             City = request.City,
             Street = request.Street,

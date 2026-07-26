@@ -1,5 +1,6 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,6 +8,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class UserRolesController : ControllerBase
 {
     private readonly AppDbContext _context;

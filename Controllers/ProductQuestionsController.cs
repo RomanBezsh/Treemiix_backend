@@ -1,6 +1,8 @@
 using CloneAmazonBack.Data;
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class ProductQuestionsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -17,6 +20,7 @@ public class ProductQuestionsController : ControllerBase
         _context = context;
     }
 
+    [AllowAnonymous]
     [HttpGet("byproduct/{productId}")]
     public async Task<IActionResult> GetByProduct(Guid productId)
     {
@@ -30,6 +34,7 @@ public class ProductQuestionsController : ControllerBase
         return Ok(questions);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -46,11 +51,12 @@ public class ProductQuestionsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateQuestionRequest request)
     {
+        var userId = User.GetUserId();
         var question = new ProductQuestion
         {
             Id = Guid.NewGuid(),
             ProductId = request.ProductId,
-            UserId = request.UserId,
+            UserId = userId,
             Content = request.Content,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow

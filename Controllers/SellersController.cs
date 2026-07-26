@@ -1,6 +1,8 @@
 using CloneAmazonBack.Data;
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SellersController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -17,6 +20,7 @@ public class SellersController : ControllerBase
         _context = context;
     }
 
+    [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -24,6 +28,7 @@ public class SellersController : ControllerBase
         return Ok(sellers);
     }
 
+    [AllowAnonymous]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -32,6 +37,7 @@ public class SellersController : ControllerBase
         return Ok(seller);
     }
 
+    [AllowAnonymous]
     [HttpGet("byuser/{userId}")]
     public async Task<IActionResult> GetByUser(Guid userId)
     {
@@ -43,10 +49,12 @@ public class SellersController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateSellerRequest request)
     {
+        var userId = User.GetUserId();
+
         var seller = new Seller
         {
             Id = Guid.NewGuid(),
-            UserId = request.UserId,
+            UserId = userId,
             StoreName = request.StoreName,
             StoreSlug = request.StoreSlug,
             LogoUrl = request.LogoUrl,

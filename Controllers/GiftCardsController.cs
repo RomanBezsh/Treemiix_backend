@@ -2,6 +2,7 @@ using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,6 +10,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class GiftCardsController : ControllerBase
 {
     private readonly AppDbContext _context;
@@ -19,10 +21,11 @@ public class GiftCardsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? purchasedBy)
+    public async Task<IActionResult> GetAll()
     {
+        var userId = User.GetUserId();
         var cards = await _context.GiftCards
-            .WhereIf(purchasedBy, g => g.PurchasedByUserId == purchasedBy!.Value)
+            .Where(g => g.PurchasedByUserId == userId)
             .OrderByDescending(g => g.CreatedAt)
             .ToListAsync();
 
@@ -37,6 +40,7 @@ public class GiftCardsController : ControllerBase
         return Ok(card);
     }
 
+    [AllowAnonymous]
     [HttpGet("code/{code}")]
     public async Task<IActionResult> GetByCode(string code)
     {
@@ -48,13 +52,14 @@ public class GiftCardsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateGiftCardRequest request)
     {
+        var userId = User.GetUserId();
         var card = new GiftCard
         {
             Id = Guid.NewGuid(),
             Code = AppDbContextExtensions.GenerateGiftCardCode(),
             InitialBalance = request.InitialBalance,
             CurrentBalance = request.InitialBalance,
-            PurchasedByUserId = request.PurchasedByUserId,
+            PurchasedByUserId = userId,
             ExpiresAt = request.ExpiresAt,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -67,8 +72,9 @@ public class GiftCardsController : ControllerBase
     }
 
     [HttpPatch("{id}/activate")]
-    public async Task<IActionResult> Activate(Guid id, Guid userId)
+    public async Task<IActionResult> Activate(Guid id)
     {
+        var userId = User.GetUserId();
         var card = await _context.GiftCards.FindAsync(id);
         if (card == null) return NotFound();
 
