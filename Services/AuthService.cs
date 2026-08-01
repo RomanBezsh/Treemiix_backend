@@ -29,7 +29,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> RegisterAsync(RegisterRequest request)
     {
         _logger.LogInformation(
-            "Начата регистрация пользователя с email {Email}",
+            "User registration started for email {Email}",
             request.Email);
 
         var userExists = await _context.Users
@@ -38,7 +38,7 @@ public class AuthService : IAuthService
         if (userExists)
         {
             _logger.LogWarning(
-                "Попытка регистрации с уже существующим email {Email}",
+                "Registration attempt with an existing email {Email}",
                 request.Email);
 
             throw new InvalidOperationException(
@@ -51,7 +51,7 @@ public class AuthService : IAuthService
         if (role is null)
         {
             _logger.LogInformation(
-                "Роль User не найдена. Создаётся новая роль");
+                "User role was not found. A new role is being created");
 
             role = new UserRole
             {
@@ -78,7 +78,7 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
 
         _logger.LogInformation(
-            "Пользователь {Email} успешно зарегистрирован. Id: {UserId}",
+            "User {Email} was registered successfully. Id: {UserId}",
             user.Email,
             user.Id);
 
@@ -93,7 +93,7 @@ public class AuthService : IAuthService
     public async Task<AuthResponse> LoginAsync(LoginRequest request)
     {
         _logger.LogInformation(
-            "Попытка входа пользователя {Email}",
+            "Login attempt for user {Email}",
             request.Email);
 
         var user = await _context.Users
@@ -103,7 +103,7 @@ public class AuthService : IAuthService
         if (user is null)
         {
             _logger.LogWarning(
-                "Пользователь с email {Email} не найден",
+                "User with email {Email} was not found",
                 request.Email);
 
             throw new UnauthorizedAccessException(
@@ -117,7 +117,7 @@ public class AuthService : IAuthService
         if (!passwordIsValid)
         {
             _logger.LogWarning(
-                "Введён неверный пароль для пользователя {Email}",
+                "Invalid password entered for user {Email}",
                 request.Email);
 
             throw new UnauthorizedAccessException(
@@ -127,7 +127,7 @@ public class AuthService : IAuthService
         if (!user.IsActive)
         {
             _logger.LogWarning(
-                "Попытка входа в отключённый аккаунт {Email}",
+                "Login attempt for disabled account {Email}",
                 request.Email);
 
             throw new UnauthorizedAccessException(
@@ -137,7 +137,7 @@ public class AuthService : IAuthService
         if (user.UserRole is null)
         {
             _logger.LogError(
-                "У пользователя {Email} не найдена роль",
+                "Role was not found for user {Email}",
                 request.Email);
 
             throw new InvalidOperationException(
@@ -145,7 +145,7 @@ public class AuthService : IAuthService
         }
 
         _logger.LogInformation(
-            "Пользователь {Email} успешно вошёл в систему",
+            "User {Email} logged in successfully",
             user.Email);
 
         return GenerateAuthResponse(
@@ -170,7 +170,7 @@ public class AuthService : IAuthService
         if (string.IsNullOrWhiteSpace(jwtKey))
         {
             _logger.LogError(
-                "JWT ключ не найден в конфигурации");
+                "JWT key was not found in the configuration");
 
             throw new InvalidOperationException(
                 "JWT key is not configured");
@@ -222,7 +222,7 @@ public class AuthService : IAuthService
             signingCredentials: credentials);
 
         _logger.LogInformation(
-            "JWT-токен успешно создан для пользователя {Email}",
+            "JWT token was created successfully for user {Email}",
             email);
 
         return new AuthResponse
