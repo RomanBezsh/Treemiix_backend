@@ -4,3 +4,4 @@ obj/
 *.user
 appsettings.json
 appsettings.Development.json
+.vs/
