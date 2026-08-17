@@ -48,10 +48,17 @@ builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+    var rateLimiting = builder.Configuration.GetSection("RateLimiting");
+
+    var authPermitLimit = rateLimiting.GetValue("AuthPermitLimit", 10);
+    var authWindowSeconds = rateLimiting.GetValue("AuthWindowSeconds", 60);
+    var globalPermitLimit = rateLimiting.GetValue("GlobalPermitLimit", 100);
+    var globalWindowSeconds = rateLimiting.GetValue("GlobalWindowSeconds", 60);
+
     options.AddFixedWindowLimiter("auth", limiterOptions =>
     {
-        limiterOptions.PermitLimit = 10;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.PermitLimit = authPermitLimit;
+        limiterOptions.Window = TimeSpan.FromSeconds(authWindowSeconds);
         limiterOptions.QueueLimit = 0;
     });
 
@@ -60,8 +67,8 @@ builder.Services.AddRateLimiter(options =>
             partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             factory: _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
-                Window = TimeSpan.FromMinutes(1),
+                PermitLimit = globalPermitLimit,
+                Window = TimeSpan.FromSeconds(globalWindowSeconds),
                 QueueLimit = 0
             }));
 });
