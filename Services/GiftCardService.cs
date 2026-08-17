@@ -24,9 +24,10 @@ public class GiftCardService : IGiftCardService
             .ToListAsync();
     }
 
-    public async Task<GiftCard?> GetByIdAsync(Guid id)
+    public async Task<GiftCard?> GetByIdAsync(Guid id, Guid userId)
     {
-        return await _context.GiftCards.FindAsync(id);
+        return await _context.GiftCards
+            .FirstOrDefaultAsync(g => g.Id == id && g.PurchasedByUserId == userId);
     }
 
     public async Task<GiftCard?> GetByCodeAsync(string code)
@@ -70,9 +71,10 @@ public class GiftCardService : IGiftCardService
         await _context.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, Guid userId)
     {
-        var card = await _context.GiftCards.FindAsync(id);
+        var card = await _context.GiftCards
+            .FirstOrDefaultAsync(g => g.Id == id && g.PurchasedByUserId == userId);
         if (card == null)
             return;
 

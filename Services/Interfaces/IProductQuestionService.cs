@@ -8,5 +8,5 @@ public interface IProductQuestionService
     Task<List<ProductQuestion>> GetByProductAsync(Guid productId);
     Task<ProductQuestion?> GetByIdAsync(Guid id);
     Task<ProductQuestion> CreateAsync(Guid userId, CreateQuestionRequest request);
-    Task<bool> DeleteAsync(Guid id);
+    Task<bool> DeleteAsync(Guid id, Guid userId, bool isAdmin = false);
 }

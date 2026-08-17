@@ -4,6 +4,6 @@ namespace CloneAmazonBack.Services.Interfaces;
 
 public interface IOrderItemService
 {
-    Task<List<OrderItem>> GetByOrderAsync(Guid orderId);
-    Task<OrderItem?> GetByIdAsync(Guid id);
+    Task<List<OrderItem>> GetByOrderAsync(Guid orderId, Guid userId);
+    Task<OrderItem?> GetByIdAsync(Guid id, Guid userId);
 }

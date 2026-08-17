@@ -29,7 +29,8 @@ public class QuestionVotesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> RemoveVote(Guid id)
     {
-        var deleted = await _voteService.RemoveVoteAsync(id);
+        var userId = User.GetUserId();
+        var deleted = await _voteService.RemoveVoteAsync(id, userId);
         if (!deleted) return NotFound();
         return NoContent();
     }

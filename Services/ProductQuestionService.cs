@@ -52,9 +52,10 @@ public class ProductQuestionService : IProductQuestionService
         return question;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId, bool isAdmin = false)
     {
-        var question = await _context.ProductQuestions.FindAsync(id);
+        var question = await _context.ProductQuestions
+            .FirstOrDefaultAsync(q => q.Id == id && (q.UserId == userId || isAdmin));
         if (question == null)
             return false;
 

@@ -14,18 +14,18 @@ public class OrderItemService : IOrderItemService
         _context = context;
     }
 
-    public async Task<List<OrderItem>> GetByOrderAsync(Guid orderId)
+    public async Task<List<OrderItem>> GetByOrderAsync(Guid orderId, Guid userId)
     {
         return await _context.OrderItems
             .Include(i => i.Product)
-            .Where(i => i.OrderId == orderId)
+            .Where(i => i.OrderId == orderId && i.Order.UserId == userId)
             .ToListAsync();
     }
 
-    public async Task<OrderItem?> GetByIdAsync(Guid id)
+    public async Task<OrderItem?> GetByIdAsync(Guid id, Guid userId)
     {
         return await _context.OrderItems
             .Include(i => i.Product)
-            .FirstOrDefaultAsync(i => i.Id == id);
+            .FirstOrDefaultAsync(i => i.Id == id && i.Order.UserId == userId);
     }
 }

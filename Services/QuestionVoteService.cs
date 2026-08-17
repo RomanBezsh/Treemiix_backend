@@ -40,9 +40,10 @@ public class QuestionVoteService : IQuestionVoteService
         await _context.SaveChangesAsync();
     }
 
-    public async Task<bool> RemoveVoteAsync(Guid id)
+    public async Task<bool> RemoveVoteAsync(Guid id, Guid userId)
     {
-        var vote = await _context.QuestionVotes.FindAsync(id);
+        var vote = await _context.QuestionVotes
+            .FirstOrDefaultAsync(v => v.Id == id && v.UserId == userId);
         if (vote == null)
             return false;
 

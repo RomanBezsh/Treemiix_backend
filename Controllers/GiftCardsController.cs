@@ -29,7 +29,8 @@ public class GiftCardsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var card = await _giftCardService.GetByIdAsync(id);
+        var userId = User.GetUserId();
+        var card = await _giftCardService.GetByIdAsync(id, userId);
         if (card == null) return NotFound();
         return Ok(card);
     }
@@ -72,7 +73,8 @@ public class GiftCardsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _giftCardService.DeleteAsync(id);
+        var userId = User.GetUserId();
+        await _giftCardService.DeleteAsync(id, userId);
         return NoContent();
     }
 }

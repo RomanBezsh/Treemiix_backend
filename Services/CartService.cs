@@ -23,12 +23,13 @@ public class CartService : ICartService
             .FirstOrDefaultAsync(c => c.UserId == userId);
     }
 
-    public async Task<Cart?> GetByIdAsync(Guid id)
+    public async Task<Cart?> GetByIdAsync(Guid id, Guid userId)
     {
         return await _context.Carts
             .Include(c => c.Items)
             .ThenInclude(i => i.Product)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .Include(c => c.PromoCode)
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
     }
 
     public async Task<Cart> CreateAsync(Guid userId)
@@ -50,9 +51,10 @@ public class CartService : ICartService
         return await _context.Carts.AnyAsync(c => c.UserId == userId);
     }
 
-    public async Task ApplyPromoCodeAsync(Guid id, Guid? promoCodeId)
+    public async Task ApplyPromoCodeAsync(Guid id, Guid? promoCodeId, Guid userId)
     {
-        var cart = await _context.Carts.FindAsync(id);
+        var cart = await _context.Carts
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         if (cart == null)
             return;
 
@@ -60,9 +62,10 @@ public class CartService : ICartService
         await _context.SaveChangesAsync();
     }
 
-    public async Task DeleteAsync(Guid id)
+    public async Task DeleteAsync(Guid id, Guid userId)
     {
-        var cart = await _context.Carts.FindAsync(id);
+        var cart = await _context.Carts
+            .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         if (cart == null)
             return;
 

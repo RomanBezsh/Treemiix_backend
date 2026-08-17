@@ -22,9 +22,10 @@ public class UserAddressService : IUserAddressService
             .ToListAsync();
     }
 
-    public async Task<UserAddress?> GetByIdAsync(Guid id)
+    public async Task<UserAddress?> GetByIdAsync(Guid id, Guid userId)
     {
-        return await _context.UserAddresses.FindAsync(id);
+        return await _context.UserAddresses
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
     }
 
     public async Task<UserAddress> CreateAsync(Guid userId, CreateAddressRequest request)
@@ -58,9 +59,10 @@ public class UserAddressService : IUserAddressService
         return address;
     }
 
-    public async Task<bool> UpdateAsync(Guid id, UpdateAddressRequest request)
+    public async Task<bool> UpdateAsync(Guid id, UpdateAddressRequest request, Guid userId)
     {
-        var address = await _context.UserAddresses.FindAsync(id);
+        var address = await _context.UserAddresses
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
         if (address == null)
             return false;
 
@@ -87,9 +89,10 @@ public class UserAddressService : IUserAddressService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId)
     {
-        var address = await _context.UserAddresses.FindAsync(id);
+        var address = await _context.UserAddresses
+            .FirstOrDefaultAsync(a => a.Id == id && a.UserId == userId);
         if (address == null)
             return false;
 

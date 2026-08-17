@@ -30,7 +30,8 @@ public class OrdersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var order = await _orderService.GetByIdAsync(id);
+        var userId = User.GetUserId();
+        var order = await _orderService.GetByIdAsync(id, userId);
 
         if (order == null) return NotFound();
         return Ok(order);
@@ -40,9 +41,15 @@ public class OrdersController : ControllerBase
     public async Task<IActionResult> Create(CreateOrderRequest request)
     {
         var userId = User.GetUserId();
-        var order = await _orderService.CreateAsync(userId, request);
-
-        return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+        try
+        {
+            var order = await _orderService.CreateAsync(userId, request);
+            return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [Authorize(Roles = $"{Roles.Admin},{Roles.Seller}")]

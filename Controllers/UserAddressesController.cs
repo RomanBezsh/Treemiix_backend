@@ -32,7 +32,8 @@ public class UserAddressesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var address = await _addressService.GetByIdAsync(id);
+        var userId = User.GetUserId();
+        var address = await _addressService.GetByIdAsync(id, userId);
         if (address == null)
             return NotFound();
 
@@ -50,7 +51,8 @@ public class UserAddressesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateAddressRequest request)
     {
-        var updated = await _addressService.UpdateAsync(id, request);
+        var userId = User.GetUserId();
+        var updated = await _addressService.UpdateAsync(id, request, userId);
         if (!updated)
             return NotFound();
 
@@ -60,7 +62,8 @@ public class UserAddressesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _addressService.DeleteAsync(id);
+        var userId = User.GetUserId();
+        var deleted = await _addressService.DeleteAsync(id, userId);
         if (!deleted)
             return NotFound();
 

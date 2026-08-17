@@ -1,3 +1,4 @@
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -20,21 +21,35 @@ public class CartItemsController : ControllerBase
     [HttpGet("bycart/{cartId}")]
     public async Task<IActionResult> GetByCart(Guid cartId)
     {
-        var items = await _cartItemService.GetByCartAsync(cartId);
+        var userId = User.GetUserId();
+        var items = await _cartItemService.GetByCartAsync(cartId, userId);
         return Ok(items);
     }
 
     [HttpPost]
     public async Task<IActionResult> Create(CreateCartItemRequest request)
     {
-        var item = await _cartItemService.CreateAsync(request);
-        return Created($"/api/cartitems/bycart/{item.CartId}", item);
+        var userId = User.GetUserId();
+        try
+        {
+            var item = await _cartItemService.CreateAsync(userId, request);
+            return Created($"/api/cartitems/bycart/{item.CartId}", item);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateQuantity(Guid id, int quantity)
     {
-        var updated = await _cartItemService.UpdateQuantityAsync(id, quantity);
+        var userId = User.GetUserId();
+        var updated = await _cartItemService.UpdateQuantityAsync(id, quantity, userId);
         if (!updated) return NotFound();
         return NoContent();
     }
@@ -42,7 +57,8 @@ public class CartItemsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _cartItemService.DeleteAsync(id);
+        var userId = User.GetUserId();
+        var deleted = await _cartItemService.DeleteAsync(id, userId);
         if (!deleted) return NotFound();
         return NoContent();
     }

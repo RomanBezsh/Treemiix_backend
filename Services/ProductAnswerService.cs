@@ -44,9 +44,10 @@ public class ProductAnswerService : IProductAnswerService
         return answer;
     }
 
-    public async Task<bool> UpdateAsync(Guid id, string content)
+    public async Task<bool> UpdateAsync(Guid id, string content, Guid userId, bool isAdmin = false)
     {
-        var answer = await _context.ProductAnswers.FindAsync(id);
+        var answer = await _context.ProductAnswers
+            .FirstOrDefaultAsync(a => a.Id == id && (a.UserId == userId || isAdmin));
         if (answer == null)
             return false;
 
@@ -58,9 +59,10 @@ public class ProductAnswerService : IProductAnswerService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId, bool isAdmin = false)
     {
-        var answer = await _context.ProductAnswers.FindAsync(id);
+        var answer = await _context.ProductAnswers
+            .FirstOrDefaultAsync(a => a.Id == id && (a.UserId == userId || isAdmin));
         if (answer == null)
             return false;
 

@@ -53,9 +53,10 @@ public class ProductReviewService : IProductReviewService
         return review;
     }
 
-    public async Task<bool> UpdateAsync(Guid id, UpdateReviewRequest request)
+    public async Task<bool> UpdateAsync(Guid id, UpdateReviewRequest request, Guid userId, bool isAdmin = false)
     {
-        var review = await _context.ProductReviews.FindAsync(id);
+        var review = await _context.ProductReviews
+            .FirstOrDefaultAsync(r => r.Id == id && (r.UserId == userId || isAdmin));
         if (review == null)
             return false;
 
@@ -69,9 +70,10 @@ public class ProductReviewService : IProductReviewService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId, bool isAdmin = false)
     {
-        var review = await _context.ProductReviews.FindAsync(id);
+        var review = await _context.ProductReviews
+            .FirstOrDefaultAsync(r => r.Id == id && (r.UserId == userId || isAdmin));
         if (review == null)
             return false;
 

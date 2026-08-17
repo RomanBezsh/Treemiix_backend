@@ -8,6 +8,6 @@ public interface IProductReviewService
     Task<List<ProductReview>> GetByProductAsync(Guid productId);
     Task<ProductReview?> GetByIdAsync(Guid id);
     Task<ProductReview> CreateAsync(Guid userId, CreateReviewRequest request);
-    Task<bool> UpdateAsync(Guid id, UpdateReviewRequest request);
-    Task<bool> DeleteAsync(Guid id);
+    Task<bool> UpdateAsync(Guid id, UpdateReviewRequest request, Guid userId, bool isAdmin = false);
+    Task<bool> DeleteAsync(Guid id, Guid userId, bool isAdmin = false);
 }

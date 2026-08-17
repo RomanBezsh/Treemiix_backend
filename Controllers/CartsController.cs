@@ -32,7 +32,8 @@ public class CartsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var cart = await _cartService.GetByIdAsync(id);
+        var userId = User.GetUserId();
+        var cart = await _cartService.GetByIdAsync(id, userId);
 
         if (cart == null) return NotFound();
         return Ok(cart);
@@ -54,14 +55,16 @@ public class CartsController : ControllerBase
     [HttpPatch("{id}/promocode")]
     public async Task<IActionResult> ApplyPromoCode(Guid id, Guid? promoCodeId)
     {
-        await _cartService.ApplyPromoCodeAsync(id, promoCodeId);
+        var userId = User.GetUserId();
+        await _cartService.ApplyPromoCodeAsync(id, promoCodeId, userId);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        await _cartService.DeleteAsync(id);
+        var userId = User.GetUserId();
+        await _cartService.DeleteAsync(id, userId);
         return NoContent();
     }
 }

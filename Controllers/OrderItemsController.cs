@@ -1,3 +1,4 @@
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,14 +20,16 @@ public class OrderItemsController : ControllerBase
     [HttpGet("byorder/{orderId}")]
     public async Task<IActionResult> GetByOrder(Guid orderId)
     {
-        var items = await _orderItemService.GetByOrderAsync(orderId);
+        var userId = User.GetUserId();
+        var items = await _orderItemService.GetByOrderAsync(orderId, userId);
         return Ok(items);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var item = await _orderItemService.GetByIdAsync(id);
+        var userId = User.GetUserId();
+        var item = await _orderItemService.GetByIdAsync(id, userId);
         if (item == null) return NotFound();
         return Ok(item);
     }

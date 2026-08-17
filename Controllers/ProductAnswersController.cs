@@ -1,4 +1,5 @@
 using CloneAmazonBack.Extensions;
+using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -37,7 +38,9 @@ public class ProductAnswersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, string content)
     {
-        var updated = await _answerService.UpdateAsync(id, content);
+        var userId = User.GetUserId();
+        var isAdmin = User.IsInRole(Roles.Admin);
+        var updated = await _answerService.UpdateAsync(id, content, userId, isAdmin);
         if (!updated) return NotFound();
         return NoContent();
     }
@@ -45,7 +48,9 @@ public class ProductAnswersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var deleted = await _answerService.DeleteAsync(id);
+        var userId = User.GetUserId();
+        var isAdmin = User.IsInRole(Roles.Admin);
+        var deleted = await _answerService.DeleteAsync(id, userId, isAdmin);
         if (!deleted) return NotFound();
         return NoContent();
     }
