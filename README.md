@@ -1,85 +1,83 @@
 # CloneAmazonBack
 
-Backend для клона Amazon: API на ASP.NET Core 9 + EF Core 9 + PostgreSQL (Npgsql), JWT-авторизация, роли, rate limiting, логирование.
+Бэкенд клона Amazon на ASP.NET Core 9 + EF Core 9 + PostgreSQL (Npgsql). JWT, роли, rate limiting, логирование.
 
 ## Запуск локально
 
-### 1. Требования
+### Нужно
 - .NET SDK 9.0
-- PostgreSQL (или Neon/облачная БД)
+- PostgreSQL (подойдёт и Neon)
 
-### 2. Конфигурация
-Скопируй настройки в переменные окружения (или впиши в `appsettings.json`). Секреты в репозиторий не коммитятся.
+### Настройка
+Задай переменные окружения (или пропиши в `appsettings.json`). Секреты в репозиторий не пушим.
 
-| Переменная | Описание |
+| Переменная | Что это |
 |---|---|
-| `ConnectionStrings__DefaultConnection` | Строка подключения к PostgreSQL |
-| `Jwt__Key` | Секретный ключ подписи JWT (минимум 32 символа) |
-| `Jwt__Issuer` | Эмитент токена (по умолчанию `CloneAmazonBack`) |
-| `Jwt__Audience` | Аудитория токена (по умолчанию `CloneAmazonFront`) |
-| `Jwt__ExpiryHours` | Время жизни токена в часах (по умолчанию 24) |
-| `Admin__Email` | Email первого админа (создаётся автоматически при старте) |
-| `Admin__Password` | Пароль первого админа |
-| `RateLimiting__AuthPermitLimit` | Лимит запросов/мин на /api/auth (по умолчанию 10) |
-| `RateLimiting__GlobalPermitLimit` | Лимит запросов/мин для всех остальных (по умолчанию 100) |
-| `Auth__RequireEmailConfirmation` | Включить подтверждение почты при регистрации (по умолчанию false) |
+| `ConnectionStrings__DefaultConnection` | строка подключения к PostgreSQL |
+| `Jwt__Key` | ключ для подписи JWT, минимум 32 символа |
+| `Jwt__Issuer` | issuer токена, по умолчанию `CloneAmazonBack` |
+| `Jwt__Audience` | audience токена, по умолчанию `CloneAmazonFront` |
+| `Jwt__ExpiryHours` | сколько часов живёт токен, по умолчанию 24 |
+| `Admin__Email` | email первого админа, создаётся автоматом при старте |
+| `Admin__Password` | пароль первого админа |
+| `RateLimiting__AuthPermitLimit` | лимит запросов/мин на `/api/auth`, по умолчанию 10 |
+| `RateLimiting__GlobalPermitLimit` | лимит запросов/мин на всё остальное, по умолчанию 100 |
+| `Auth__RequireEmailConfirmation` | требовать подтверждение почты при регистрации, по умолчанию false |
 
-Пример строки подключения PostgreSQL:
+Строка подключения выглядит так:
 ```
 Host=localhost;Database=cloneamazon;Username=postgres;Password=secret
 ```
 
-### 3. Применение миграций
+### Миграции
 ```bash
 dotnet ef database update
 ```
 
-### 4. Запуск
+### Запуск
 ```bash
 dotnet run
 ```
 
-При старте автоматически:
-- создаются роли `Admin`, `Seller`, `User` (если их нет);
-- создаётся первый админ из `Admin__Email`/`Admin__Password` (если заданы и email не существует).
+При старте само создаётся: роли `Admin`, `Seller`, `User` (если их ещё нет) и первый админ из `Admin__Email`/`Admin__Password`, если эти переменные заданы и такого email ещё нет.
 
 ### Подтверждение почты
-Если `Auth__RequireEmailConfirmation = true`, при регистрации юзер получает 6-значный код (валиден 15 минут). Подтвердить:
+Если `Auth__RequireEmailConfirmation = true` — после регистрации юзеру приходит 6-значный код, живёт 15 минут:
 ```
 POST /api/auth/confirm-email
 { "email": "user@example.com", "code": "123456" }
 ```
-До подтверждения вход по логину/паролю запрещён. При `false` (по умолчанию) почта считается подтверждённой сразу.
+Без подтверждения залогиниться нельзя. По умолчанию (`false`) почта считается подтверждённой сразу.
 
 ## Тесты
 
-Проект `CloneAmazonBack.Tests` — unit-тесты на сервисы (EF InMemory, реальная БД не нужна).
+`CloneAmazonBack.Tests` — юнит-тесты на сервисы, гоняются на EF InMemory, реальная БД не нужна.
 
 ```bash
-dotnet test                        # из папки проекта
+dotnet test
 dotnet test CloneAmazonBack.Tests\CloneAmazonBack.Tests.csproj
 ```
 
-Фильтрация:
+Запустить конкретное:
 ```bash
-dotnet test --filter "AuthService"                     # по имени
-dotnet test --filter "ProductServiceTests"             # один класс
-dotnet test --filter "Name~UpdateAsync"                # по части имени
+dotnet test --filter "AuthService"          # по имени
+dotnet test --filter "ProductServiceTests"  # один класс
+dotnet test --filter "Name~UpdateAsync"     # по части имени
 ```
 
 ## API
 
-Swagger при запуске в Development: `https://localhost:<port>/swagger`
+Swagger в Development: `https://localhost:<port>/swagger`
 
-Публичные эндпоинты (без токена): регистрация, логин, категории, товары, отзывы, вопросы, ответы, галереи, видео, атрибуты, продавцы, промокоды и гифткарты по коду.
+Без токена доступны: регистрация, логин, категории, товары, отзывы, вопросы, ответы, галереи, видео, атрибуты, продавцы, а также промокоды и гифткарты по коду.
 
-Остальное — только с JWT-токеном (`Authorization: Bearer <token>`). Роли:
-- `Admin` — управление пользователями, ролями, категориями, промокодами, статусами продавцов/заказов;
-- `Seller` — создание/изменение товаров, галерей, видео, атрибутов;
-- `User` — корзина, заказы, отзывы, вопросы, адреса, профиль, гифткарты.
+Всё остальное — только с JWT (`Authorization: Bearer <token>`). Роли:
+- `Admin` — пользователи, роли, категории, промокоды, статусы продавцов/заказов
+- `Seller` — товары, галереи, видео, атрибуты
+- `User` — корзина, заказы, отзывы, вопросы, адреса, профиль, гифткарты
 
-## Деплой (Render)
+## Деплой на Render
 
-1. Создай Web Service из репозитория.
-2. Задай переменные окружения (см. таблицу выше). Обязательные: `ConnectionStrings__DefaultConnection`, `Jwt__Key`.
-3. `dotnet ef database update` выполняется при первом запуске вручную или через Build Command.
+1. Создаёшь Web Service из репозитория.
+2. Прописываешь переменные окружения из таблицы выше. Обязательны `ConnectionStrings__DefaultConnection` и `Jwt__Key`.
+3. `dotnet ef database update` — вручную или через Build Command при первом деплое.
