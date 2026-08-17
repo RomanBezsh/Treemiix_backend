@@ -8,7 +8,7 @@ namespace CloneAmazonBack.Tests;
 
 public class AuthServiceTests
 {
-    private static AuthService CreateService(AppDbContext context)
+    private static AuthService CreateService(AppDbContext context, bool requireEmailConfirmation = false)
     {
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -16,7 +16,8 @@ public class AuthServiceTests
                 ["Jwt:Key"] = "TestKeyForCloneAmazonBack2026AtLeast32CharsLong!",
                 ["Jwt:Issuer"] = "CloneAmazonBack",
                 ["Jwt:Audience"] = "CloneAmazonFront",
-                ["Jwt:ExpiryHours"] = "24"
+                ["Jwt:ExpiryHours"] = "24",
+                ["Auth:RequireEmailConfirmation"] = requireEmailConfirmation.ToString()
             })
             .Build();
 
@@ -153,5 +154,131 @@ public class AuthServiceTests
         var user = context.Users.Single();
         Assert.NotEqual("password123", user.Password);
         Assert.True(BCrypt.Net.BCrypt.Verify("password123", user.Password));
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WhenConfirmationRequired_ShouldMarkEmailAsUnconfirmed()
+    {
+        using var context = TestDbContextFactory.Create();
+
+        var service = CreateService(context, requireEmailConfirmation: true);
+
+        await service.RegisterAsync(new RegisterRequest
+        {
+            Email = "test@example.com",
+            Password = "password123",
+            FirstName = "John",
+            LastName = "Doe"
+        });
+
+        var user = context.Users.Single();
+        Assert.False(user.EmailConfirmed);
+        Assert.NotNull(user.EmailConfirmationCode);
+    }
+
+    [Fact]
+    public async Task LoginAsync_WithUnconfirmedEmail_ShouldThrow()
+    {
+        using var context = TestDbContextFactory.Create();
+
+        var service = CreateService(context, requireEmailConfirmation: true);
+
+        await service.RegisterAsync(new RegisterRequest
+        {
+            Email = "test@example.com",
+            Password = "password123",
+            FirstName = "John",
+            LastName = "Doe"
+        });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.LoginAsync(new LoginRequest
+            {
+                Email = "test@example.com",
+                Password = "password123"
+            }));
+    }
+
+    [Fact]
+    public async Task ConfirmEmailAsync_WithValidCode_ShouldConfirmEmail()
+    {
+        using var context = TestDbContextFactory.Create();
+
+        var service = CreateService(context, requireEmailConfirmation: true);
+
+        await service.RegisterAsync(new RegisterRequest
+        {
+            Email = "test@example.com",
+            Password = "password123",
+            FirstName = "John",
+            LastName = "Doe"
+        });
+
+        var code = context.Users.Single().EmailConfirmationCode!;
+
+        await service.ConfirmEmailAsync(new ConfirmEmailRequest
+        {
+            Email = "test@example.com",
+            Code = code
+        });
+
+        var user = context.Users.Single();
+        Assert.True(user.EmailConfirmed);
+        Assert.Null(user.EmailConfirmationCode);
+    }
+
+    [Fact]
+    public async Task ConfirmEmailAsync_WithInvalidCode_ShouldThrow()
+    {
+        using var context = TestDbContextFactory.Create();
+
+        var service = CreateService(context, requireEmailConfirmation: true);
+
+        await service.RegisterAsync(new RegisterRequest
+        {
+            Email = "test@example.com",
+            Password = "password123",
+            FirstName = "John",
+            LastName = "Doe"
+        });
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.ConfirmEmailAsync(new ConfirmEmailRequest
+            {
+                Email = "test@example.com",
+                Code = "000000"
+            }));
+    }
+
+    [Fact]
+    public async Task ConfirmEmailAsync_ThenLogin_ShouldSucceed()
+    {
+        using var context = TestDbContextFactory.Create();
+
+        var service = CreateService(context, requireEmailConfirmation: true);
+
+        await service.RegisterAsync(new RegisterRequest
+        {
+            Email = "test@example.com",
+            Password = "password123",
+            FirstName = "John",
+            LastName = "Doe"
+        });
+
+        var code = context.Users.Single().EmailConfirmationCode!;
+
+        await service.ConfirmEmailAsync(new ConfirmEmailRequest
+        {
+            Email = "test@example.com",
+            Code = code
+        });
+
+        var result = await service.LoginAsync(new LoginRequest
+        {
+            Email = "test@example.com",
+            Password = "password123"
+        });
+
+        Assert.NotNull(result.Token);
     }
 }

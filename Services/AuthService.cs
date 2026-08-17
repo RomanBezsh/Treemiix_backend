@@ -63,6 +63,10 @@ public class AuthService : IAuthService
             _context.UserRoles.Add(role);
         }
 
+        var requireEmailConfirmation = _configuration.GetValue(
+            "Auth:RequireEmailConfirmation",
+            false);
+
         var user = new User
         {
             Id = Guid.NewGuid(),
@@ -71,6 +75,9 @@ public class AuthService : IAuthService
             FirstName = request.FirstName,
             LastName = request.LastName,
             IsActive = true,
+            EmailConfirmed = !requireEmailConfirmation,
+            EmailConfirmationCode = GenerateConfirmationCode(),
+            EmailConfirmationCodeExpiresAt = DateTime.UtcNow.AddMinutes(15),
             UserRoleId = role.Id
         };
 
@@ -134,6 +141,20 @@ public class AuthService : IAuthService
                 "Account is disabled");
         }
 
+        var requireEmailConfirmation = _configuration.GetValue(
+            "Auth:RequireEmailConfirmation",
+            false);
+
+        if (requireEmailConfirmation && !user.EmailConfirmed)
+        {
+            _logger.LogWarning(
+                "Login attempt for unconfirmed email {Email}",
+                request.Email);
+
+            throw new UnauthorizedAccessException(
+                "Email is not confirmed. Please confirm your email first.");
+        }
+
         if (user.UserRole is null)
         {
             _logger.LogError(
@@ -154,6 +175,73 @@ public class AuthService : IAuthService
             user.FirstName,
             user.LastName,
             user.UserRole.Name);
+    }
+
+    public async Task<bool> ConfirmEmailAsync(ConfirmEmailRequest request)
+    {
+        _logger.LogInformation(
+            "Email confirmation attempt for {Email}",
+            request.Email);
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == request.Email);
+
+        if (user is null)
+        {
+            _logger.LogWarning(
+                "Confirmation attempt for unknown email {Email}",
+                request.Email);
+
+            throw new UnauthorizedAccessException(
+                "User with this email was not found");
+        }
+
+        if (user.EmailConfirmed)
+        {
+            _logger.LogInformation(
+                "Email {Email} is already confirmed",
+                request.Email);
+
+            return true;
+        }
+
+        if (string.IsNullOrEmpty(user.EmailConfirmationCode) ||
+            user.EmailConfirmationCodeExpiresAt < DateTime.UtcNow)
+        {
+            _logger.LogWarning(
+                "Confirmation code expired for {Email}",
+                request.Email);
+
+            throw new InvalidOperationException(
+                "Confirmation code is expired. Please register again.");
+        }
+
+        if (user.EmailConfirmationCode != request.Code)
+        {
+            _logger.LogWarning(
+                "Invalid confirmation code for {Email}",
+                request.Email);
+
+            throw new UnauthorizedAccessException(
+                "Invalid confirmation code");
+        }
+
+        user.EmailConfirmed = true;
+        user.EmailConfirmationCode = null;
+        user.EmailConfirmationCodeExpiresAt = null;
+
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation(
+            "Email {Email} confirmed successfully",
+            request.Email);
+
+        return true;
+    }
+
+    private static string GenerateConfirmationCode()
+    {
+        return Random.Shared.Next(100000, 1000000).ToString();
     }
 
     private AuthResponse GenerateAuthResponse(
