@@ -1,10 +1,8 @@
-using CloneAmazonBack.Data;
-using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,22 +11,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class ProductGalleriesController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IProductGalleryService _galleryService;
 
-    public ProductGalleriesController(AppDbContext context)
+    public ProductGalleriesController(IProductGalleryService galleryService)
     {
-        _context = context;
+        _galleryService = galleryService;
     }
 
     [AllowAnonymous]
     [HttpGet("byproduct/{productId}")]
     public async Task<IActionResult> GetByProduct(Guid productId)
     {
-        var images = await _context.ProductGalleries
-            .Where(g => g.ProductId == productId)
-            .OrderBy(g => g.SortOrder)
-            .ToListAsync();
-
+        var images = await _galleryService.GetByProductAsync(productId);
         return Ok(images);
     }
 
@@ -36,18 +30,7 @@ public class ProductGalleriesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateGalleryRequest request)
     {
-        var gallery = new ProductGallery
-        {
-            Id = Guid.NewGuid(),
-            ProductId = request.ProductId,
-            Path = request.Path,
-            SortOrder = request.SortOrder,
-            IsMain = request.IsMain
-        };
-
-        _context.ProductGalleries.Add(gallery);
-        await _context.SaveChangesAsync();
-
+        var gallery = await _galleryService.CreateAsync(request);
         return Created($"/api/productgalleries/byproduct/{gallery.ProductId}", gallery);
     }
 
@@ -55,17 +38,8 @@ public class ProductGalleriesController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateGalleryRequest request)
     {
-        var gallery = await _context.ProductGalleries.FindAsync(id);
-        if (gallery == null) return NotFound();
-
-        gallery.Path = request.Path;
-        gallery.SortOrder = request.SortOrder;
-        gallery.IsMain = request.IsMain;
-
-        if (request.IsMain)
-            await _context.ResetOtherMainImagesAsync(gallery.ProductId, id);
-
-        await _context.SaveChangesAsync();
+        var updated = await _galleryService.UpdateAsync(id, request);
+        if (!updated) return NotFound();
         return NoContent();
     }
 
@@ -73,12 +47,8 @@ public class ProductGalleriesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var gallery = await _context.ProductGalleries.FindAsync(id);
-        if (gallery == null) return NotFound();
-
-        _context.ProductGalleries.Remove(gallery);
-        await _context.SaveChangesAsync();
-
+        var deleted = await _galleryService.DeleteAsync(id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 }

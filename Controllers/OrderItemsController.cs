@@ -1,7 +1,6 @@
-using CloneAmazonBack.Data;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -10,31 +9,24 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class OrderItemsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IOrderItemService _orderItemService;
 
-    public OrderItemsController(AppDbContext context)
+    public OrderItemsController(IOrderItemService orderItemService)
     {
-        _context = context;
+        _orderItemService = orderItemService;
     }
 
     [HttpGet("byorder/{orderId}")]
     public async Task<IActionResult> GetByOrder(Guid orderId)
     {
-        var items = await _context.OrderItems
-            .Include(i => i.Product)
-            .Where(i => i.OrderId == orderId)
-            .ToListAsync();
-
+        var items = await _orderItemService.GetByOrderAsync(orderId);
         return Ok(items);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var item = await _context.OrderItems
-            .Include(i => i.Product)
-            .FirstOrDefaultAsync(i => i.Id == id);
-
+        var item = await _orderItemService.GetByIdAsync(id);
         if (item == null) return NotFound();
         return Ok(item);
     }

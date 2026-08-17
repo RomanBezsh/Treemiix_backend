@@ -1,10 +1,8 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
-using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,24 +11,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class ProductQuestionsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IProductQuestionService _questionService;
 
-    public ProductQuestionsController(AppDbContext context)
+    public ProductQuestionsController(IProductQuestionService questionService)
     {
-        _context = context;
+        _questionService = questionService;
     }
 
     [AllowAnonymous]
     [HttpGet("byproduct/{productId}")]
     public async Task<IActionResult> GetByProduct(Guid productId)
     {
-        var questions = await _context.ProductQuestions
-            .Include(q => q.User)
-            .Include(q => q.Answers)
-            .Where(q => q.ProductId == productId)
-            .OrderByDescending(q => q.CreatedAt)
-            .ToListAsync();
-
+        var questions = await _questionService.GetByProductAsync(productId);
         return Ok(questions);
     }
 
@@ -38,12 +30,7 @@ public class ProductQuestionsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var question = await _context.ProductQuestions
-            .Include(q => q.User)
-            .Include(q => q.Answers)
-            .ThenInclude(a => a.User)
-            .FirstOrDefaultAsync(q => q.Id == id);
-
+        var question = await _questionService.GetByIdAsync(id);
         if (question == null) return NotFound();
         return Ok(question);
     }
@@ -52,31 +39,15 @@ public class ProductQuestionsController : ControllerBase
     public async Task<IActionResult> Create(CreateQuestionRequest request)
     {
         var userId = User.GetUserId();
-        var question = new ProductQuestion
-        {
-            Id = Guid.NewGuid(),
-            ProductId = request.ProductId,
-            UserId = userId,
-            Content = request.Content,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.ProductQuestions.Add(question);
-        await _context.SaveChangesAsync();
-
+        var question = await _questionService.CreateAsync(userId, request);
         return CreatedAtAction(nameof(GetById), new { id = question.Id }, question);
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var question = await _context.ProductQuestions.FindAsync(id);
-        if (question == null) return NotFound();
-
-        _context.ProductQuestions.Remove(question);
-        await _context.SaveChangesAsync();
-
+        var deleted = await _questionService.DeleteAsync(id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 }

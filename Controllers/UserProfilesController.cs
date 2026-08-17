@@ -1,10 +1,8 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
-using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,19 +11,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class UserProfilesController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IUserProfileService _profileService;
 
-    public UserProfilesController(AppDbContext context)
+    public UserProfilesController(IUserProfileService profileService)
     {
-        _context = context;
+        _profileService = profileService;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetMyProfile()
     {
         var userId = User.GetUserId();
-        var profile = await _context.UserProfiles
-            .FirstOrDefaultAsync(p => p.UserId == userId);
+        var profile = await _profileService.GetByUserAsync(userId);
 
         if (profile == null)
             return NotFound();
@@ -38,36 +35,25 @@ public class UserProfilesController : ControllerBase
     {
         var userId = User.GetUserId();
 
-        var existingProfile = await _context.UserProfiles.FindAsync(userId);
-        if (existingProfile != null)
-            return Conflict("Profile already exists");
-
-        var profile = new UserProfile
+        try
         {
-            UserId = userId,
-            DateOfBirth = request.DateOfBirth,
-            AvatarUrl = request.AvatarUrl
-        };
-
-        _context.UserProfiles.Add(profile);
-        await _context.SaveChangesAsync();
-
-        return CreatedAtAction(nameof(GetMyProfile), null, profile);
+            var profile = await _profileService.CreateAsync(userId, request);
+            return CreatedAtAction(nameof(GetMyProfile), null, profile);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 
     [HttpPut]
     public async Task<IActionResult> Update(UpdateProfileRequest request)
     {
         var userId = User.GetUserId();
-        var profile = await _context.UserProfiles.FindAsync(userId);
+        var updated = await _profileService.UpdateAsync(userId, request);
 
-        if (profile == null)
+        if (!updated)
             return NotFound();
-
-        profile.DateOfBirth = request.DateOfBirth;
-        profile.AvatarUrl = request.AvatarUrl;
-
-        await _context.SaveChangesAsync();
 
         return NoContent();
     }

@@ -30,4 +30,10 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="CloneAmazonBack.Tests\**" />
+      <EmbeddedResource Remove="CloneAmazonBack.Tests\**" />
+      <None Remove="CloneAmazonBack.Tests\**" />
+    </ItemGroup>
+
 </Project>

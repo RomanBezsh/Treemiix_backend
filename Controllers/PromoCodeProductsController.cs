@@ -1,9 +1,8 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -12,21 +11,17 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class PromoCodeProductsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IPromoCodeProductService _linkService;
 
-    public PromoCodeProductsController(AppDbContext context)
+    public PromoCodeProductsController(IPromoCodeProductService linkService)
     {
-        _context = context;
+        _linkService = linkService;
     }
 
     [HttpGet("bypromocode/{promoCodeId}")]
     public async Task<IActionResult> GetByPromoCode(Guid promoCodeId)
     {
-        var items = await _context.PromoCodeProducts
-            .Include(pp => pp.Product)
-            .Where(pp => pp.PromoCodeId == promoCodeId)
-            .ToListAsync();
-
+        var items = await _linkService.GetByPromoCodeAsync(promoCodeId);
         return Ok(items);
     }
 
@@ -34,16 +29,7 @@ public class PromoCodeProductsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreatePromoCodeProductRequest request)
     {
-        var link = new PromoCodeProduct
-        {
-            Id = Guid.NewGuid(),
-            ProductId = request.ProductId,
-            PromoCodeId = request.PromoCodeId
-        };
-
-        _context.PromoCodeProducts.Add(link);
-        await _context.SaveChangesAsync();
-
+        var link = await _linkService.CreateAsync(request);
         return Created($"/api/promocodeproducts/bypromocode/{link.PromoCodeId}", link);
     }
 
@@ -51,12 +37,8 @@ public class PromoCodeProductsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var link = await _context.PromoCodeProducts.FindAsync(id);
-        if (link == null) return NotFound();
-
-        _context.PromoCodeProducts.Remove(link);
-        await _context.SaveChangesAsync();
-
+        var deleted = await _linkService.DeleteAsync(id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 }

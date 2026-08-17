@@ -1,9 +1,8 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -12,22 +11,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class ProductVideosController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IProductVideoService _videoService;
 
-    public ProductVideosController(AppDbContext context)
+    public ProductVideosController(IProductVideoService videoService)
     {
-        _context = context;
+        _videoService = videoService;
     }
 
     [AllowAnonymous]
     [HttpGet("byproduct/{productId}")]
     public async Task<IActionResult> GetByProduct(Guid productId)
     {
-        var videos = await _context.ProductVideos
-            .Where(v => v.ProductId == productId)
-            .OrderBy(v => v.SortOrder)
-            .ToListAsync();
-
+        var videos = await _videoService.GetByProductAsync(productId);
         return Ok(videos);
     }
 
@@ -35,18 +30,7 @@ public class ProductVideosController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateVideoRequest request)
     {
-        var video = new ProductVideo
-        {
-            Id = Guid.NewGuid(),
-            ProductId = request.ProductId,
-            Path = request.Path,
-            SortOrder = request.SortOrder,
-            IsMain = request.IsMain
-        };
-
-        _context.ProductVideos.Add(video);
-        await _context.SaveChangesAsync();
-
+        var video = await _videoService.CreateAsync(request);
         return Created($"/api/productvideos/byproduct/{video.ProductId}", video);
     }
 
@@ -54,14 +38,8 @@ public class ProductVideosController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateVideoRequest request)
     {
-        var video = await _context.ProductVideos.FindAsync(id);
-        if (video == null) return NotFound();
-
-        video.Path = request.Path;
-        video.SortOrder = request.SortOrder;
-        video.IsMain = request.IsMain;
-
-        await _context.SaveChangesAsync();
+        var updated = await _videoService.UpdateAsync(id, request);
+        if (!updated) return NotFound();
         return NoContent();
     }
 
@@ -69,12 +47,8 @@ public class ProductVideosController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var video = await _context.ProductVideos.FindAsync(id);
-        if (video == null) return NotFound();
-
-        _context.ProductVideos.Remove(video);
-        await _context.SaveChangesAsync();
-
+        var deleted = await _videoService.DeleteAsync(id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 }

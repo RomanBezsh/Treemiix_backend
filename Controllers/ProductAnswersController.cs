@@ -1,10 +1,8 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
-using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,24 +11,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class ProductAnswersController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IProductAnswerService _answerService;
 
-    public ProductAnswersController(AppDbContext context)
+    public ProductAnswersController(IProductAnswerService answerService)
     {
-        _context = context;
+        _answerService = answerService;
     }
 
     [AllowAnonymous]
     [HttpGet("byquestion/{questionId}")]
     public async Task<IActionResult> GetByQuestion(Guid questionId)
     {
-        var answers = await _context.ProductAnswers
-            .Include(a => a.User)
-            .Where(a => a.QuestionId == questionId)
-            .OrderByDescending(a => a.IsOfficialAnswer)
-            .ThenByDescending(a => a.CreatedAt)
-            .ToListAsync();
-
+        var answers = await _answerService.GetByQuestionAsync(questionId);
         return Ok(answers);
     }
 
@@ -38,45 +30,23 @@ public class ProductAnswersController : ControllerBase
     public async Task<IActionResult> Create(CreateAnswerRequest request)
     {
         var userId = User.GetUserId();
-        var answer = new ProductAnswer
-        {
-            Id = Guid.NewGuid(),
-            QuestionId = request.QuestionId,
-            UserId = userId,
-            Content = request.Content,
-            IsOfficialAnswer = request.IsOfficialAnswer,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.ProductAnswers.Add(answer);
-        await _context.SaveChangesAsync();
-
+        var answer = await _answerService.CreateAsync(userId, request);
         return Created($"/api/productanswers/byquestion/{answer.QuestionId}", answer);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, string content)
     {
-        var answer = await _context.ProductAnswers.FindAsync(id);
-        if (answer == null) return NotFound();
-
-        answer.Content = content;
-        answer.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
+        var updated = await _answerService.UpdateAsync(id, content);
+        if (!updated) return NotFound();
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var answer = await _context.ProductAnswers.FindAsync(id);
-        if (answer == null) return NotFound();
-
-        _context.ProductAnswers.Remove(answer);
-        await _context.SaveChangesAsync();
-
+        var deleted = await _answerService.DeleteAsync(id);
+        if (!deleted) return NotFound();
         return NoContent();
     }
 }
