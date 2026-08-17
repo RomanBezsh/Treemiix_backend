@@ -15,23 +15,35 @@ public class CartItemService : ICartItemService
         _context = context;
     }
 
-    public async Task<List<CartItem>> GetByCartAsync(Guid cartId)
+    public async Task<List<CartItem>> GetByCartAsync(Guid cartId, Guid userId)
     {
         return await _context.CartItems
             .Include(i => i.Product)
-            .Where(i => i.CartId == cartId)
+            .Where(i => i.CartId == cartId && i.Cart.UserId == userId)
             .ToListAsync();
     }
 
-    public async Task<CartItem> CreateAsync(CreateCartItemRequest request)
+    public async Task<CartItem> CreateAsync(Guid userId, CreateCartItemRequest request)
     {
+        var cart = await _context.Carts
+            .FirstOrDefaultAsync(c => c.Id == request.CartId && c.UserId == userId);
+
+        if (cart == null)
+            throw new UnauthorizedAccessException("Cart not found or belongs to another user");
+
+        var product = await _context.Products
+            .FirstOrDefaultAsync(p => p.Id == request.ProductId && p.IsActive);
+
+        if (product == null)
+            throw new InvalidOperationException("Product not found or inactive");
+
         var item = new CartItem
         {
             Id = Guid.NewGuid(),
             CartId = request.CartId,
             ProductId = request.ProductId,
             Quantity = request.Quantity,
-            Price = request.Price
+            Price = product.Price
         };
 
         _context.CartItems.Add(item);
@@ -40,9 +52,12 @@ public class CartItemService : ICartItemService
         return item;
     }
 
-    public async Task<bool> UpdateQuantityAsync(Guid id, int quantity)
+    public async Task<bool> UpdateQuantityAsync(Guid id, int quantity, Guid userId)
     {
-        var item = await _context.CartItems.FindAsync(id);
+        var item = await _context.CartItems
+            .Include(i => i.Cart)
+            .FirstOrDefaultAsync(i => i.Id == id && i.Cart.UserId == userId);
+
         if (item == null)
             return false;
 
@@ -52,9 +67,12 @@ public class CartItemService : ICartItemService
         return true;
     }
 
-    public async Task<bool> DeleteAsync(Guid id)
+    public async Task<bool> DeleteAsync(Guid id, Guid userId)
     {
-        var item = await _context.CartItems.FindAsync(id);
+        var item = await _context.CartItems
+            .Include(i => i.Cart)
+            .FirstOrDefaultAsync(i => i.Id == id && i.Cart.UserId == userId);
+
         if (item == null)
             return false;
 

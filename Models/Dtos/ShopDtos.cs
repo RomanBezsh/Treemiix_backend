@@ -83,10 +83,7 @@ public record CreateCartItemRequest(
     Guid ProductId,
 
     [property: Range(1, int.MaxValue)]
-    int Quantity,
-
-    [property: Range(typeof(decimal), "0.01", "999999999")]
-    decimal Price
+    int Quantity
 );
 
 public record CreatePromoCodeRequest(
@@ -140,18 +137,7 @@ public record CreateOrderRequest(
 );
 
 public record CreateOrderItemRequest(
-    Guid? ProductId,
-
-    [property: Required]
-    [property: StringLength(200, MinimumLength = 1)]
-    string ProductName,
-
-    [property: Range(typeof(decimal), "0.01", "999999999")]
-    decimal ProductPrice,
-
-    [property: Required]
-    [property: StringLength(500)]
-    string ProductAvatarUrl,
+    Guid ProductId,
 
     [property: Range(1, int.MaxValue)]
     int Quantity

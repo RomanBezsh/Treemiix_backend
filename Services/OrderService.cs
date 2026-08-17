@@ -26,14 +26,14 @@ public class OrderService : IOrderService
             .ToListAsync();
     }
 
-    public async Task<Order?> GetByIdAsync(Guid id)
+    public async Task<Order?> GetByIdAsync(Guid id, Guid userId)
     {
         return await _context.Orders
             .Include(o => o.Items)
             .ThenInclude(i => i.Product)
             .Include(o => o.User)
             .Include(o => o.PromoCode)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id && o.UserId == userId);
     }
 
     public async Task<Order> CreateAsync(Guid userId, CreateOrderRequest request)
@@ -55,20 +55,37 @@ public class OrderService : IOrderService
         var totalAmount = 0m;
         foreach (var itemRequest in request.Items)
         {
+            var product = await _context.Products
+                .Include(p => p.Galleries)
+                .FirstOrDefaultAsync(p => p.Id == itemRequest.ProductId && p.IsActive);
+
+            if (product == null)
+                throw new InvalidOperationException($"Product {itemRequest.ProductId} not found or inactive");
+
+            if (product.Stock < itemRequest.Quantity)
+                throw new InvalidOperationException($"Not enough stock for product {product.Name}");
+
+            var avatarUrl = product.Galleries
+                .OrderByDescending(g => g.IsMain)
+                .Select(g => g.Path)
+                .FirstOrDefault() ?? string.Empty;
+
             var item = new OrderItem
             {
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
-                ProductId = itemRequest.ProductId,
-                ProductName = itemRequest.ProductName,
-                ProductPrice = itemRequest.ProductPrice,
-                ProductAvatarUrl = itemRequest.ProductAvatarUrl,
+                ProductId = product.Id,
+                ProductName = product.Name,
+                ProductPrice = product.Price,
+                ProductAvatarUrl = avatarUrl,
                 Quantity = itemRequest.Quantity,
-                TotalPrice = itemRequest.ProductPrice * itemRequest.Quantity
+                TotalPrice = product.Price * itemRequest.Quantity
             };
 
             totalAmount += item.TotalPrice;
             order.Items.Add(item);
+
+            product.Stock -= itemRequest.Quantity;
         }
 
         order.TotalAmount = totalAmount;
