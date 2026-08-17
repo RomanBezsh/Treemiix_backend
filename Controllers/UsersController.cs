@@ -1,8 +1,7 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -11,38 +10,24 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class UsersController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IUserService _userService;
 
-    public UsersController(AppDbContext context)
+    public UsersController(IUserService userService)
     {
-        _context = context;
+        _userService = userService;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] bool includeInactive = false)
     {
-        var query = _context.Users
-            .Include(u => u.UserRole)
-            .AsQueryable();
-
-        if (!includeInactive)
-            query = query.Where(u => u.IsActive);
-
-        var users = await query
-            .Select(u => new UserResponse(u.Id, u.FirstName, u.LastName, u.Email, u.IsActive, u.UserRole.Name))
-            .ToListAsync();
-
+        var users = await _userService.GetAllAsync(includeInactive);
         return Ok(users);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var user = await _context.Users
-            .Include(u => u.UserRole)
-            .Where(u => u.Id == id)
-            .Select(u => new UserResponse(u.Id, u.FirstName, u.LastName, u.Email, u.IsActive, u.UserRole.Name))
-            .FirstOrDefaultAsync();
+        var user = await _userService.GetByIdAsync(id);
 
         if (user == null)
             return NotFound();
@@ -53,59 +38,28 @@ public class UsersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateUserRequest request)
     {
-        var user = await _context.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
-
-        user.FirstName = request.FirstName;
-        user.LastName = request.LastName;
-        user.IsActive = request.IsActive;
-
-        await _context.SaveChangesAsync();
-
+        await _userService.UpdateAsync(id, request);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
-        var user = await _context.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
-
-        user.IsActive = false;
-        await _context.SaveChangesAsync();
-
+        await _userService.SoftDeleteAsync(id);
         return NoContent();
     }
 
     [HttpDelete("{id}/hard")]
     public async Task<IActionResult> HardDelete(Guid id)
     {
-        var user = await _context.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
-
-        _context.Users.Remove(user);
-        await _context.SaveChangesAsync();
-
+        await _userService.HardDeleteAsync(id);
         return NoContent();
     }
 
     [HttpPatch("{id}/reactivate")]
     public async Task<IActionResult> Reactivate(Guid id)
     {
-        var user = await _context.Users.FindAsync(id);
-
-        if (user == null)
-            return NotFound();
-
-        user.IsActive = true;
-        await _context.SaveChangesAsync();
-
+        await _userService.ReactivateAsync(id);
         return NoContent();
     }
 }

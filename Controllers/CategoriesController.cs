@@ -1,10 +1,7 @@
-using CloneAmazonBack.Data;
-using CloneAmazonBack.Extensions;
-using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,21 +10,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class CategoriesController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly ICategoryService _categoryService;
 
-    public CategoriesController(AppDbContext context)
+    public CategoriesController(ICategoryService categoryService)
     {
-        _context = context;
+        _categoryService = categoryService;
     }
 
     [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var categories = await _context.Categories
-            .Include(c => c.Children)
-            .ToListAsync();
-
+        var categories = await _categoryService.GetAllAsync();
         return Ok(categories);
     }
 
@@ -35,10 +29,7 @@ public class CategoriesController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var category = await _context.Categories
-            .Include(c => c.Parent)
-            .Include(c => c.Children)
-            .FirstOrDefaultAsync(c => c.Id == id);
+        var category = await _categoryService.GetByIdAsync(id);
 
         if (category == null) return NotFound();
         return Ok(category);
@@ -47,49 +38,21 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateCategoryRequest request)
     {
-        var category = new Category
-        {
-            Id = Guid.NewGuid(),
-            ParentId = request.ParentId,
-            Name = request.Name,
-            Slug = request.Slug,
-            Path = await _context.BuildCategoryPathAsync(request.ParentId, request.Slug),
-            SortOrder = request.SortOrder,
-            IsActive = request.IsActive
-        };
-
-        _context.Categories.Add(category);
-        await _context.SaveChangesAsync();
-
+        var category = await _categoryService.CreateAsync(request);
         return CreatedAtAction(nameof(GetById), new { id = category.Id }, category);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateCategoryRequest request)
     {
-        var category = await _context.Categories.FindAsync(id);
-        if (category == null) return NotFound();
-
-        category.ParentId = request.ParentId;
-        category.Name = request.Name;
-        category.Slug = request.Slug;
-        category.Path = await _context.BuildCategoryPathAsync(request.ParentId, request.Slug);
-        category.SortOrder = request.SortOrder;
-        category.IsActive = request.IsActive;
-
-        await _context.SaveChangesAsync();
+        await _categoryService.UpdateAsync(id, request);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var category = await _context.Categories.FindAsync(id);
-        if (category == null) return NotFound();
-
-        _context.Categories.Remove(category);
-        await _context.SaveChangesAsync();
-
+        await _categoryService.DeleteAsync(id);
         return NoContent();
     }
 }

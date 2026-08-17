@@ -1,10 +1,9 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,18 +12,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class SellersController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly ISellerService _sellerService;
 
-    public SellersController(AppDbContext context)
+    public SellersController(ISellerService sellerService)
     {
-        _context = context;
+        _sellerService = sellerService;
     }
 
     [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var sellers = await _context.Sellers.ToListAsync();
+        var sellers = await _sellerService.GetAllAsync();
         return Ok(sellers);
     }
 
@@ -32,7 +31,7 @@ public class SellersController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var seller = await _context.Sellers.FindAsync(id);
+        var seller = await _sellerService.GetByIdAsync(id);
         if (seller == null) return NotFound();
         return Ok(seller);
     }
@@ -41,7 +40,7 @@ public class SellersController : ControllerBase
     [HttpGet("byuser/{userId}")]
     public async Task<IActionResult> GetByUser(Guid userId)
     {
-        var seller = await _context.Sellers.FirstOrDefaultAsync(s => s.UserId == userId);
+        var seller = await _sellerService.GetByUserAsync(userId);
         if (seller == null) return NotFound();
         return Ok(seller);
     }
@@ -50,25 +49,7 @@ public class SellersController : ControllerBase
     public async Task<IActionResult> Create(CreateSellerRequest request)
     {
         var userId = User.GetUserId();
-
-        var seller = new Seller
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            StoreName = request.StoreName,
-            StoreSlug = request.StoreSlug,
-            LogoUrl = request.LogoUrl,
-            Description = request.Description,
-            TaxNumber = request.TaxNumber,
-            LegalAddress = request.LegalAddress,
-            BankAccount = request.BankAccount,
-            CommissionRate = request.CommissionRate,
-            Status = SellerStatus.PendingVerification,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.Sellers.Add(seller);
-        await _context.SaveChangesAsync();
+        var seller = await _sellerService.CreateAsync(userId, request);
 
         return CreatedAtAction(nameof(GetById), new { id = seller.Id }, seller);
     }
@@ -76,31 +57,14 @@ public class SellersController : ControllerBase
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateSellerRequest request)
     {
-        var seller = await _context.Sellers.FindAsync(id);
-        if (seller == null) return NotFound();
-
-        seller.StoreName = request.StoreName;
-        seller.StoreSlug = request.StoreSlug;
-        seller.LogoUrl = request.LogoUrl;
-        seller.Description = request.Description;
-        seller.TaxNumber = request.TaxNumber;
-        seller.LegalAddress = request.LegalAddress;
-        seller.BankAccount = request.BankAccount;
-        seller.CommissionRate = request.CommissionRate;
-
-        await _context.SaveChangesAsync();
+        await _sellerService.UpdateAsync(id, request);
         return NoContent();
     }
 
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, SellerStatus status)
     {
-        var seller = await _context.Sellers.FindAsync(id);
-        if (seller == null) return NotFound();
-
-        seller.Status = status;
-        await _context.SaveChangesAsync();
-
+        await _sellerService.UpdateStatusAsync(id, status);
         return NoContent();
     }
 }

@@ -1,10 +1,7 @@
-using CloneAmazonBack.Data;
-using CloneAmazonBack.Extensions;
-using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,25 +10,18 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class ProductsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IProductService _productService;
 
-    public ProductsController(AppDbContext context)
+    public ProductsController(IProductService productService)
     {
-        _context = context;
+        _productService = productService;
     }
 
     [AllowAnonymous]
     [HttpGet]
     public async Task<IActionResult> GetAll([FromQuery] Guid? categoryId, [FromQuery] Guid? sellerId, [FromQuery] bool? isActive)
     {
-        var products = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Seller)
-            .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
-            .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
-            .WhereIf(isActive, p => p.IsActive == isActive!.Value)
-            .ToListAsync();
-
+        var products = await _productService.GetAllAsync(categoryId, sellerId, isActive);
         return Ok(products);
     }
 
@@ -39,12 +29,7 @@ public class ProductsController : ControllerBase
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var product = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Seller)
-            .Include(p => p.Galleries)
-            .Include(p => p.AttributeValues)
-            .FirstOrDefaultAsync(p => p.Id == id);
+        var product = await _productService.GetByIdAsync(id);
 
         if (product == null) return NotFound();
         return Ok(product);
@@ -53,73 +38,28 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateProductRequest request)
     {
-        var product = new Product
-        {
-            Id = Guid.NewGuid(),
-            Name = request.Name,
-            Slug = request.Slug,
-            SellerId = request.SellerId,
-            CategoryId = request.CategoryId,
-            Price = request.Price,
-            OldCost = request.OldCost,
-            Stock = request.Stock,
-            Description = request.Description,
-            Sku = request.Sku,
-            IsActive = true,
-            Status = ProductStatus.Active,
-            CreatedAt = DateTime.UtcNow,
-            UpdatedAt = DateTime.UtcNow
-        };
-
-        _context.Products.Add(product);
-        await _context.SaveChangesAsync();
-
+        var product = await _productService.CreateAsync(request);
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateProductRequest request)
     {
-        var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound();
-
-        product.Name = request.Name;
-        product.Slug = request.Slug;
-        product.CategoryId = request.CategoryId;
-        product.Price = request.Price;
-        product.OldCost = request.OldCost;
-        product.Stock = request.Stock;
-        product.Description = request.Description;
-        product.Sku = request.Sku;
-        product.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
+        await _productService.UpdateAsync(id, request);
         return NoContent();
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
-        var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound();
-
-        product.IsActive = false;
-        product.Status = ProductStatus.Archived;
-        product.UpdatedAt = DateTime.UtcNow;
-
-        await _context.SaveChangesAsync();
+        await _productService.SoftDeleteAsync(id);
         return NoContent();
     }
 
     [HttpDelete("{id}/hard")]
     public async Task<IActionResult> HardDelete(Guid id)
     {
-        var product = await _context.Products.FindAsync(id);
-        if (product == null) return NotFound();
-
-        _context.Products.Remove(product);
-        await _context.SaveChangesAsync();
-
+        await _productService.HardDeleteAsync(id);
         return NoContent();
     }
 }

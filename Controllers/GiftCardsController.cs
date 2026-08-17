@@ -1,10 +1,8 @@
-using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
-using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
+using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -13,29 +11,25 @@ namespace CloneAmazonBack.Controllers;
 [Authorize]
 public class GiftCardsController : ControllerBase
 {
-    private readonly AppDbContext _context;
+    private readonly IGiftCardService _giftCardService;
 
-    public GiftCardsController(AppDbContext context)
+    public GiftCardsController(IGiftCardService giftCardService)
     {
-        _context = context;
+        _giftCardService = giftCardService;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
         var userId = User.GetUserId();
-        var cards = await _context.GiftCards
-            .Where(g => g.PurchasedByUserId == userId)
-            .OrderByDescending(g => g.CreatedAt)
-            .ToListAsync();
-
+        var cards = await _giftCardService.GetAllAsync(userId);
         return Ok(cards);
     }
 
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var card = await _context.GiftCards.FindAsync(id);
+        var card = await _giftCardService.GetByIdAsync(id);
         if (card == null) return NotFound();
         return Ok(card);
     }
@@ -44,7 +38,7 @@ public class GiftCardsController : ControllerBase
     [HttpGet("code/{code}")]
     public async Task<IActionResult> GetByCode(string code)
     {
-        var card = await _context.GiftCards.FirstOrDefaultAsync(g => g.Code == code);
+        var card = await _giftCardService.GetByCodeAsync(code);
         if (card == null) return NotFound();
         return Ok(card);
     }
@@ -53,20 +47,7 @@ public class GiftCardsController : ControllerBase
     public async Task<IActionResult> Create(CreateGiftCardRequest request)
     {
         var userId = User.GetUserId();
-        var card = new GiftCard
-        {
-            Id = Guid.NewGuid(),
-            Code = AppDbContextExtensions.GenerateGiftCardCode(),
-            InitialBalance = request.InitialBalance,
-            CurrentBalance = request.InitialBalance,
-            PurchasedByUserId = userId,
-            ExpiresAt = request.ExpiresAt,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        _context.GiftCards.Add(card);
-        await _context.SaveChangesAsync();
+        var card = await _giftCardService.CreateAsync(userId, request);
 
         return CreatedAtAction(nameof(GetById), new { id = card.Id }, card);
     }
@@ -75,17 +56,15 @@ public class GiftCardsController : ControllerBase
     public async Task<IActionResult> Activate(Guid id)
     {
         var userId = User.GetUserId();
-        var card = await _context.GiftCards.FindAsync(id);
-        if (card == null) return NotFound();
 
-        if (!card.IsActive || card.CurrentBalance <= 0)
-            return BadRequest("Gift card is not active or has no balance");
-
-        if (card.ActivatedByUserId.HasValue)
-            return BadRequest("Gift card already activated");
-
-        card.ActivatedByUserId = userId;
-        await _context.SaveChangesAsync();
+        try
+        {
+            await _giftCardService.ActivateAsync(id, userId);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
 
         return NoContent();
     }
@@ -93,12 +72,7 @@ public class GiftCardsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var card = await _context.GiftCards.FindAsync(id);
-        if (card == null) return NotFound();
-
-        card.IsActive = false;
-        await _context.SaveChangesAsync();
-
+        await _giftCardService.DeleteAsync(id);
         return NoContent();
     }
 }
