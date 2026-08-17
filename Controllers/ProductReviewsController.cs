@@ -1,6 +1,7 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
+using CloneAmazonBack.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -47,11 +48,19 @@ public class ProductReviewsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(ProductReview review)
+    public async Task<IActionResult> Create(CreateReviewRequest request)
     {
-        review.Id = Guid.NewGuid();
-        review.UserId = User.GetUserId();
-        review.CreatedAt = DateTime.UtcNow;
+        var review = new ProductReview
+        {
+            Id = Guid.NewGuid(),
+            UserId = User.GetUserId(),
+            ProductId = request.ProductId,
+            ProductGalleryId = request.ProductGalleryId,
+            ProductVideoId = request.ProductVideoId,
+            Text = request.Text,
+            Rating = request.Rating,
+            CreatedAt = DateTime.UtcNow
+        };
 
         _context.ProductReviews.Add(review);
         await _context.SaveChangesAsync();
@@ -60,15 +69,15 @@ public class ProductReviewsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, ProductReview updated)
+    public async Task<IActionResult> Update(Guid id, UpdateReviewRequest request)
     {
         var review = await _context.ProductReviews.FindAsync(id);
         if (review == null) return NotFound();
 
-        review.Text = updated.Text;
-        review.Rating = updated.Rating;
-        review.ProductGalleryId = updated.ProductGalleryId;
-        review.ProductVideoId = updated.ProductVideoId;
+        review.Text = request.Text;
+        review.Rating = request.Rating;
+        review.ProductGalleryId = request.ProductGalleryId;
+        review.ProductVideoId = request.ProductVideoId;
 
         await _context.SaveChangesAsync();
         return NoContent();

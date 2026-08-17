@@ -1,5 +1,6 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
+using CloneAmazonBack.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -37,9 +38,14 @@ public class UserRolesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(UserRole role)
+    public async Task<IActionResult> Create(CreateRoleRequest request)
     {
-        role.Id = Guid.NewGuid();
+        var role = new UserRole
+        {
+            Id = Guid.NewGuid(),
+            Name = request.Name,
+            Rights = request.Rights
+        };
 
         _context.UserRoles.Add(role);
         await _context.SaveChangesAsync();
@@ -48,15 +54,15 @@ public class UserRolesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, UserRole updated)
+    public async Task<IActionResult> Update(Guid id, UpdateRoleRequest request)
     {
         var role = await _context.UserRoles.FindAsync(id);
 
         if (role == null)
             return NotFound();
 
-        role.Name = updated.Name;
-        role.Rights = updated.Rights;
+        role.Name = request.Name;
+        role.Rights = request.Rights;
 
         await _context.SaveChangesAsync();
 

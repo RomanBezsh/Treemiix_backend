@@ -1,5 +1,6 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
+using CloneAmazonBack.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,9 +31,14 @@ public class PromoCodeProductsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(PromoCodeProduct link)
+    public async Task<IActionResult> Create(CreatePromoCodeProductRequest request)
     {
-        link.Id = Guid.NewGuid();
+        var link = new PromoCodeProduct
+        {
+            Id = Guid.NewGuid(),
+            ProductId = request.ProductId,
+            PromoCodeId = request.PromoCodeId
+        };
 
         _context.PromoCodeProducts.Add(link);
         await _context.SaveChangesAsync();

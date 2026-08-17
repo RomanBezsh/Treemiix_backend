@@ -1,5 +1,6 @@
 using System.Text;
 using CloneAmazonBack.Data;
+using CloneAmazonBack.Middleware;
 using CloneAmazonBack.Services;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -54,6 +55,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseCors();

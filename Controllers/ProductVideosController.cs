@@ -1,5 +1,6 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
+using CloneAmazonBack.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -31,9 +32,16 @@ public class ProductVideosController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(ProductVideo video)
+    public async Task<IActionResult> Create(CreateVideoRequest request)
     {
-        video.Id = Guid.NewGuid();
+        var video = new ProductVideo
+        {
+            Id = Guid.NewGuid(),
+            ProductId = request.ProductId,
+            Path = request.Path,
+            SortOrder = request.SortOrder,
+            IsMain = request.IsMain
+        };
 
         _context.ProductVideos.Add(video);
         await _context.SaveChangesAsync();
@@ -42,14 +50,14 @@ public class ProductVideosController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, ProductVideo updated)
+    public async Task<IActionResult> Update(Guid id, UpdateVideoRequest request)
     {
         var video = await _context.ProductVideos.FindAsync(id);
         if (video == null) return NotFound();
 
-        video.Path = updated.Path;
-        video.SortOrder = updated.SortOrder;
-        video.IsMain = updated.IsMain;
+        video.Path = request.Path;
+        video.SortOrder = request.SortOrder;
+        video.IsMain = request.IsMain;
 
         await _context.SaveChangesAsync();
         return NoContent();

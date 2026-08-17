@@ -1,6 +1,7 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
+using CloneAmazonBack.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -32,9 +33,16 @@ public class ProductGalleriesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(ProductGallery gallery)
+    public async Task<IActionResult> Create(CreateGalleryRequest request)
     {
-        gallery.Id = Guid.NewGuid();
+        var gallery = new ProductGallery
+        {
+            Id = Guid.NewGuid(),
+            ProductId = request.ProductId,
+            Path = request.Path,
+            SortOrder = request.SortOrder,
+            IsMain = request.IsMain
+        };
 
         _context.ProductGalleries.Add(gallery);
         await _context.SaveChangesAsync();
@@ -43,16 +51,16 @@ public class ProductGalleriesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, ProductGallery updated)
+    public async Task<IActionResult> Update(Guid id, UpdateGalleryRequest request)
     {
         var gallery = await _context.ProductGalleries.FindAsync(id);
         if (gallery == null) return NotFound();
 
-        gallery.Path = updated.Path;
-        gallery.SortOrder = updated.SortOrder;
-        gallery.IsMain = updated.IsMain;
+        gallery.Path = request.Path;
+        gallery.SortOrder = request.SortOrder;
+        gallery.IsMain = request.IsMain;
 
-        if (updated.IsMain)
+        if (request.IsMain)
             await _context.ResetOtherMainImagesAsync(gallery.ProductId, id);
 
         await _context.SaveChangesAsync();

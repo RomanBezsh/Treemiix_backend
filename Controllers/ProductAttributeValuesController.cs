@@ -1,5 +1,6 @@
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
+using CloneAmazonBack.Models.Dtos;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -30,9 +31,15 @@ public class ProductAttributeValuesController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(ProductAttributeValue attribute)
+    public async Task<IActionResult> Create(CreateAttributeRequest request)
     {
-        attribute.Id = Guid.NewGuid();
+        var attribute = new ProductAttributeValue
+        {
+            Id = Guid.NewGuid(),
+            ProductId = request.ProductId,
+            NameAttr = request.NameAttr,
+            Value = request.Value
+        };
 
         _context.ProductAttributeValues.Add(attribute);
         await _context.SaveChangesAsync();
@@ -41,13 +48,13 @@ public class ProductAttributeValuesController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, ProductAttributeValue updated)
+    public async Task<IActionResult> Update(Guid id, UpdateAttributeRequest request)
     {
         var attribute = await _context.ProductAttributeValues.FindAsync(id);
         if (attribute == null) return NotFound();
 
-        attribute.NameAttr = updated.NameAttr;
-        attribute.Value = updated.Value;
+        attribute.NameAttr = request.NameAttr;
+        attribute.Value = request.Value;
 
         await _context.SaveChangesAsync();
         return NoContent();
