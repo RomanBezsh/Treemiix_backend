@@ -31,6 +31,7 @@ public class ProductVideosController : ControllerBase
         return Ok(videos);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPost]
     public async Task<IActionResult> Create(CreateVideoRequest request)
     {
@@ -49,6 +50,7 @@ public class ProductVideosController : ControllerBase
         return Created($"/api/productvideos/byproduct/{video.ProductId}", video);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateVideoRequest request)
     {
@@ -63,6 +65,7 @@ public class ProductVideosController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

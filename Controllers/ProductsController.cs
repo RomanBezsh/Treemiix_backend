@@ -1,3 +1,4 @@
+using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -35,6 +36,7 @@ public class ProductsController : ControllerBase
         return Ok(product);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPost]
     public async Task<IActionResult> Create(CreateProductRequest request)
     {
@@ -42,6 +44,7 @@ public class ProductsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateProductRequest request)
     {
@@ -49,6 +52,7 @@ public class ProductsController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
@@ -56,6 +60,7 @@ public class ProductsController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpDelete("{id}/hard")]
     public async Task<IActionResult> HardDelete(Guid id)
     {

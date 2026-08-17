@@ -30,6 +30,7 @@ public class ProductAttributeValuesController : ControllerBase
         return Ok(attributes);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPost]
     public async Task<IActionResult> Create(CreateAttributeRequest request)
     {
@@ -47,6 +48,7 @@ public class ProductAttributeValuesController : ControllerBase
         return Created($"/api/productattributevalues/byproduct/{attribute.ProductId}", attribute);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateAttributeRequest request)
     {
@@ -60,6 +62,7 @@ public class ProductAttributeValuesController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

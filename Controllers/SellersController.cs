@@ -54,6 +54,7 @@ public class SellersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = seller.Id }, seller);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateSellerRequest request)
     {
@@ -61,6 +62,7 @@ public class SellersController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, SellerStatus status)
     {

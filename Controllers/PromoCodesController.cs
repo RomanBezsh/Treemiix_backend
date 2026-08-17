@@ -1,3 +1,4 @@
+using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -41,6 +42,7 @@ public class PromoCodesController : ControllerBase
         return Ok(promo);
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create(CreatePromoCodeRequest request)
     {
@@ -48,6 +50,7 @@ public class PromoCodesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = promo.Id }, promo);
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreatePromoCodeRequest request)
     {
@@ -55,6 +58,7 @@ public class PromoCodesController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

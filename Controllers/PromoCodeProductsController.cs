@@ -30,6 +30,7 @@ public class PromoCodeProductsController : ControllerBase
         return Ok(items);
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpPost]
     public async Task<IActionResult> Create(CreatePromoCodeProductRequest request)
     {
@@ -46,6 +47,7 @@ public class PromoCodeProductsController : ControllerBase
         return Created($"/api/promocodeproducts/bypromocode/{link.PromoCodeId}", link);
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {

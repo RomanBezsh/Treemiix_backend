@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Models;
 using Microsoft.EntityFrameworkCore;
@@ -39,11 +40,12 @@ public static class AppDbContextExtensions
     public static string GenerateGiftCardCode()
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        return string.Create(16, chars, (buffer, alphabet) =>
-        {
-            for (int i = 0; i < buffer.Length; i++)
-                buffer[i] = alphabet[Random.Shared.Next(alphabet.Length)];
-        });
+        var buffer = new char[16];
+
+        for (var i = 0; i < buffer.Length; i++)
+            buffer[i] = chars[RandomNumberGenerator.GetInt32(chars.Length)];
+
+        return new string(buffer);
     }
 
     public static async Task<OrderDiscountResult?> ApplyPromoCodeAsync(this AppDbContext context, Guid? promoCodeId, decimal totalAmount)

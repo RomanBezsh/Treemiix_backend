@@ -45,6 +45,7 @@ public class OrdersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
     }
 
+    [Authorize(Roles = $"{Roles.Admin},{Roles.Seller}")]
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, OrderStatus status)
     {

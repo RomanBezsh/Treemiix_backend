@@ -9,7 +9,7 @@ namespace CloneAmazonBack.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles = Roles.Admin)]
 public class UserRolesController : ControllerBase
 {
     private readonly AppDbContext _context;

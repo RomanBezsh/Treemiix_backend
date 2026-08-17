@@ -32,6 +32,7 @@ public class ProductGalleriesController : ControllerBase
         return Ok(images);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPost]
     public async Task<IActionResult> Create(CreateGalleryRequest request)
     {
@@ -50,6 +51,7 @@ public class ProductGalleriesController : ControllerBase
         return Created($"/api/productgalleries/byproduct/{gallery.ProductId}", gallery);
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, UpdateGalleryRequest request)
     {
@@ -67,6 +69,7 @@ public class ProductGalleriesController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(Guid id)
     {
