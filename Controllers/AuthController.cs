@@ -18,8 +18,17 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    /// <summary>
+    /// Registers a new user.
+    /// </summary>
+    /// <param name="request">User registration data.</param>
+    /// <returns>JWT token and registered user information.</returns>
     [AllowAnonymous]
     [HttpPost("register")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
         try
@@ -33,8 +42,17 @@ public class AuthController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Authenticates a user.
+    /// </summary>
+    /// <param name="request">User login credentials.</param>
+    /// <returns>JWT token and user information.</returns>
     [AllowAnonymous]
     [HttpPost("login")]
+    [ProducesResponseType(typeof(AuthResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> Login(LoginRequest request)
     {
         try
