@@ -76,6 +76,9 @@ builder.Services.AddScoped<ISellerService, SellerService>();
 builder.Services.AddScoped<IPromoCodeService, PromoCodeService>();
 builder.Services.AddScoped<IGiftCardService, GiftCardService>();
 
+
+
+builder.Services.AddHealthChecks();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -98,4 +101,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+
+
+app.MapHealthChecks("/health");
 app.Run();
