@@ -16,7 +16,10 @@ public class ProductService : IProductService
         _context = context;
     }
 
-    public async Task<List<Product>> GetAllAsync(Guid? categoryId, Guid? sellerId, bool? isActive)
+    public async Task<List<Product>> GetAllAsync(
+        Guid? categoryId,
+        Guid? sellerId,
+        bool? isActive)
     {
         return await _context.Products
             .Include(p => p.Category)
@@ -24,6 +27,15 @@ public class ProductService : IProductService
             .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
             .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
             .WhereIf(isActive, p => p.IsActive == isActive!.Value)
+            .ToListAsync();
+    }
+
+    public async Task<List<Product>> GetDealsAsync()
+    {
+        return await _context.Products
+            .Include(p => p.Category)
+            .Include(p => p.Seller)
+            .Where(p => p.IsActive && p.OldCost > p.Price)
             .ToListAsync();
     }
 
@@ -78,6 +90,7 @@ public class ProductService : IProductService
     public async Task UpdateAsync(Guid id, CreateProductRequest request)
     {
         var product = await _context.Products.FindAsync(id);
+
         if (product == null)
             return;
 
@@ -110,6 +123,7 @@ public class ProductService : IProductService
     public async Task SoftDeleteAsync(Guid id)
     {
         var product = await _context.Products.FindAsync(id);
+
         if (product == null)
             return;
 
@@ -123,6 +137,7 @@ public class ProductService : IProductService
     public async Task HardDeleteAsync(Guid id)
     {
         var product = await _context.Products.FindAsync(id);
+
         if (product == null)
             return;
 

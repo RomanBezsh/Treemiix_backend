@@ -19,9 +19,20 @@ public class ProductsController : ControllerBase
 
     [AllowAnonymous]
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] Guid? categoryId, [FromQuery] Guid? sellerId, [FromQuery] bool? isActive)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] Guid? categoryId,
+        [FromQuery] Guid? sellerId,
+        [FromQuery] bool? isActive)
     {
         var products = await _productService.GetAllAsync(categoryId, sellerId, isActive);
+        return Ok(products);
+    }
+
+    [AllowAnonymous]
+    [HttpGet("deals")]
+    public async Task<IActionResult> GetDeals()
+    {
+        var products = await _productService.GetDealsAsync();
         return Ok(products);
     }
 
@@ -31,7 +42,9 @@ public class ProductsController : ControllerBase
     {
         var product = await _productService.GetByIdAsync(id);
 
-        if (product == null) return NotFound();
+        if (product == null)
+            return NotFound();
+
         return Ok(product);
     }
 
@@ -39,7 +52,11 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> Create(CreateProductRequest request)
     {
         var product = await _productService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+
+        return CreatedAtAction(
+            nameof(GetById),
+            new { id = product.Id },
+            product);
     }
 
     [HttpPut("{id}")]
