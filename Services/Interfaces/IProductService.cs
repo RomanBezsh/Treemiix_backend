@@ -5,7 +5,12 @@ namespace CloneAmazonBack.Services.Interfaces;
 
 public interface IProductService
 {
-    Task<List<Product>> GetAllAsync(Guid? categoryId, Guid? sellerId, bool? isActive);
+    Task<(List<Product> Items, int TotalCount)> GetAllAsync(
+        Guid? categoryId,
+        Guid? sellerId,
+        bool? isActive,
+        int page,
+        int pageSize);
 
     Task<List<Product>> GetDealsAsync();
 

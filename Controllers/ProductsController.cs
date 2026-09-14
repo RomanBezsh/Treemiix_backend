@@ -22,10 +22,37 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> GetAll(
         [FromQuery] Guid? categoryId,
         [FromQuery] Guid? sellerId,
-        [FromQuery] bool? isActive)
+        [FromQuery] bool? isActive,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
     {
-        var products = await _productService.GetAllAsync(categoryId, sellerId, isActive);
-        return Ok(products);
+        if (page < 1)
+            page = 1;
+
+        if (pageSize < 1)
+            pageSize = 20;
+
+        if (pageSize > 100)
+            pageSize = 100;
+
+        var result = await _productService.GetAllAsync(
+            categoryId,
+            sellerId,
+            isActive,
+            page,
+            pageSize);
+
+        var totalPages = (int)Math.Ceiling(
+            result.TotalCount / (double)pageSize);
+
+        return Ok(new
+        {
+            items = result.Items,
+            page,
+            pageSize,
+            totalCount = result.TotalCount,
+            totalPages
+        });
     }
 
     [AllowAnonymous]

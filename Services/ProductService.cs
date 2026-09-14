@@ -16,18 +16,28 @@ public class ProductService : IProductService
         _context = context;
     }
 
-    public async Task<List<Product>> GetAllAsync(
+    public async Task<(List<Product> Items, int TotalCount)> GetAllAsync(
         Guid? categoryId,
         Guid? sellerId,
-        bool? isActive)
+        bool? isActive,
+        int page,
+        int pageSize)
     {
-        return await _context.Products
+        var query = _context.Products
             .Include(p => p.Category)
             .Include(p => p.Seller)
             .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
             .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
-            .WhereIf(isActive, p => p.IsActive == isActive!.Value)
+            .WhereIf(isActive, p => p.IsActive == isActive!.Value);
+
+        var totalCount = await query.CountAsync();
+
+        var items = await query
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+
+        return (items, totalCount);
     }
 
     public async Task<List<Product>> GetDealsAsync()
