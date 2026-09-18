@@ -18,6 +18,7 @@ public class UserProfileService : IUserProfileService
     public async Task<UserProfile?> GetByUserAsync(Guid userId)
     {
         return await _context.UserProfiles
+            .Include(p => p.User) // Включаем связанные данные пользователя
             .FirstOrDefaultAsync(p => p.UserId == userId);
     }
 
@@ -42,12 +43,24 @@ public class UserProfileService : IUserProfileService
 
     public async Task<bool> UpdateAsync(Guid userId, UpdateProfileRequest request)
     {
-        var profile = await _context.UserProfiles.FindAsync(userId);
+        var profile = await _context.UserProfiles
+            .FirstOrDefaultAsync(p => p.UserId == userId);
+            
         if (profile == null)
-            return false;
-
-        profile.DateOfBirth = request.DateOfBirth;
-        profile.AvatarUrl = request.AvatarUrl;
+        {
+            profile = new UserProfile
+            {
+                UserId = userId,
+                DateOfBirth = request.DateOfBirth,
+                AvatarUrl = request.AvatarUrl
+            };
+            _context.UserProfiles.Add(profile);
+        }
+        else
+        {
+            profile.DateOfBirth = request.DateOfBirth;
+            profile.AvatarUrl = request.AvatarUrl;
+        }
 
         await _context.SaveChangesAsync();
 

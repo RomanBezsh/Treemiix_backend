@@ -1,3 +1,4 @@
+using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
@@ -12,10 +13,12 @@ namespace CloneAmazonBack.Controllers;
 public class UserProfilesController : ControllerBase
 {
     private readonly IUserProfileService _profileService;
+    private readonly AppDbContext _context;
 
-    public UserProfilesController(IUserProfileService profileService)
+    public UserProfilesController(IUserProfileService profileService, AppDbContext context)
     {
         _profileService = profileService;
+        _context = context;
     }
 
     [HttpGet]
@@ -25,7 +28,21 @@ public class UserProfilesController : ControllerBase
         var profile = await _profileService.GetByUserAsync(userId);
 
         if (profile == null)
-            return NotFound();
+        {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound("User not found");
+            
+            return Ok(new { 
+                user = new { 
+                    id = user.Id,
+                    firstName = user.FirstName,
+                    lastName = user.LastName,
+                    email = user.Email
+                }, 
+                dateOfBirth = (DateTime?)null, 
+                avatarUrl = (string?)null 
+            });
+        }
 
         return Ok(profile);
     }
@@ -50,11 +67,19 @@ public class UserProfilesController : ControllerBase
     public async Task<IActionResult> Update(UpdateProfileRequest request)
     {
         var userId = User.GetUserId();
-        var updated = await _profileService.UpdateAsync(userId, request);
+        try
+        {
+            var updated = await _profileService.UpdateAsync(userId, request);
 
-        if (!updated)
-            return NotFound();
+            if (!updated)
+                return NotFound("Profile not found");
 
-        return NoContent();
+            return NoContent();
+        }
+        catch (Exception ex)
+        {
+            // Возвращаем детали ошибки для отладки
+            return StatusCode(500, new { message = ex.Message, inner = ex.InnerException?.Message });
+        }
     }
 }

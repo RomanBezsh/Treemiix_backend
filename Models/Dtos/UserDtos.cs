@@ -57,7 +57,7 @@ public record UpdateAddressRequest(
 public record UpdateProfileRequest(
     DateTime DateOfBirth,
 
-    [property: StringLength(500)]
+    [StringLength(500)]
     string? AvatarUrl
 );
 

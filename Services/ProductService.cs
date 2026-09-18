@@ -21,6 +21,7 @@ public class ProductService : IProductService
         return await _context.Products
             .Include(p => p.Category)
             .Include(p => p.Seller)
+            .Include(p => p.Galleries)
             .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
             .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
             .WhereIf(isActive, p => p.IsActive == isActive!.Value)
@@ -33,6 +34,7 @@ public class ProductService : IProductService
             .Include(p => p.Category)
             .Include(p => p.Seller)
             .Include(p => p.Galleries)
+            .Include(p => p.Videos)
             .Include(p => p.AttributeValues)
             .FirstOrDefaultAsync(p => p.Id == id);
     }
@@ -51,6 +53,16 @@ public class ProductService : IProductService
             Stock = request.Stock,
             Description = request.Description,
             Sku = request.Sku,
+            Asin = request.Asin,
+            ItemModelNumber = request.ItemModelNumber,
+            Manufacturer = request.Manufacturer,
+            CountryOfOrigin = request.CountryOfOrigin,
+            ProductDimensions = request.ProductDimensions,
+            ItemWeight = request.ItemWeight,
+            WarrantyInfo = request.WarrantyInfo,
+            Features = request.Features,
+            Binding = request.Binding,
+            ReleaseDate = request.ReleaseDate,
             IsActive = true,
             Status = ProductStatus.Active,
             CreatedAt = DateTime.UtcNow,
@@ -72,6 +84,29 @@ public class ProductService : IProductService
 
         await _context.SaveChangesAsync();
 
+        // Handle Images/Gallery
+        if (!string.IsNullOrEmpty(request.ImageUrl) || (request.Images != null && request.Images.Count > 0))
+        {
+            var imagesList = request.Images ?? new List<string>();
+            if (!string.IsNullOrEmpty(request.ImageUrl) && !imagesList.Contains(request.ImageUrl))
+            {
+                imagesList.Insert(0, request.ImageUrl);
+            }
+
+            for (int i = 0; i < imagesList.Count; i++)
+            {
+                _context.ProductGalleries.Add(new ProductGallery
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = product.Id,
+                    Path = imagesList[i],
+                    SortOrder = i,
+                    IsMain = i == 0
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
+
         return product;
     }
 
@@ -91,6 +126,16 @@ public class ProductService : IProductService
         product.Stock = request.Stock;
         product.Description = request.Description;
         product.Sku = request.Sku;
+        product.Asin = request.Asin;
+        product.ItemModelNumber = request.ItemModelNumber;
+        product.Manufacturer = request.Manufacturer;
+        product.CountryOfOrigin = request.CountryOfOrigin;
+        product.ProductDimensions = request.ProductDimensions;
+        product.ItemWeight = request.ItemWeight;
+        product.WarrantyInfo = request.WarrantyInfo;
+        product.Features = request.Features;
+        product.Binding = request.Binding;
+        product.ReleaseDate = request.ReleaseDate;
         product.UpdatedAt = DateTime.UtcNow;
 
         if (priceChanged && request.Price > 0)
@@ -105,6 +150,32 @@ public class ProductService : IProductService
         }
 
         await _context.SaveChangesAsync();
+
+        // Handle Images/Gallery Update
+        if (!string.IsNullOrEmpty(request.ImageUrl) || (request.Images != null && request.Images.Count > 0))
+        {
+            var existingGalleries = await _context.ProductGalleries.Where(g => g.ProductId == id).ToListAsync();
+            _context.ProductGalleries.RemoveRange(existingGalleries);
+
+            var imagesList = request.Images ?? new List<string>();
+            if (!string.IsNullOrEmpty(request.ImageUrl) && !imagesList.Contains(request.ImageUrl))
+            {
+                imagesList.Insert(0, request.ImageUrl);
+            }
+
+            for (int i = 0; i < imagesList.Count; i++)
+            {
+                _context.ProductGalleries.Add(new ProductGallery
+                {
+                    Id = Guid.NewGuid(),
+                    ProductId = id,
+                    Path = imagesList[i],
+                    SortOrder = i,
+                    IsMain = i == 0
+                });
+            }
+            await _context.SaveChangesAsync();
+        }
     }
 
     public async Task SoftDeleteAsync(Guid id)

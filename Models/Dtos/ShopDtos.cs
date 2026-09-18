@@ -48,33 +48,46 @@ public record CreateCategoryRequest(
 );
 
 public record CreateProductRequest(
-    [property: Required]
-    [property: StringLength(200, MinimumLength = 2)]
+    [param: Required]
+    [param: StringLength(200, MinimumLength = 2)]
     string Name,
 
-    [property: Required]
-    [property: StringLength(200, MinimumLength = 2)]
+    [param: Required]
+    [param: StringLength(200, MinimumLength = 2)]
     string Slug,
 
     Guid SellerId,
 
     Guid CategoryId,
 
-    [property: Range(typeof(decimal), "0.01", "999999999")]
+    [param: Range(typeof(decimal), "0.01", "999999999")]
     decimal Price,
 
-    [property: Range(typeof(decimal), "0", "999999999")]
+    [param: Range(typeof(decimal), "0", "999999999")]
     decimal? OldCost,
 
-    [property: Range(0, int.MaxValue)]
+    [param: Range(0, int.MaxValue)]
     int Stock,
 
-    [property: Required]
-    [property: StringLength(5000, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(5000, MinimumLength = 1)]
     string Description,
 
-    [property: StringLength(100)]
-    string? Sku
+    [param: StringLength(100)]
+    string? Sku,
+
+    string? Asin,
+    string? ItemModelNumber,
+    string? Manufacturer,
+    string? CountryOfOrigin,
+    string? ProductDimensions,
+    string? ItemWeight,
+    string? WarrantyInfo,
+    string? Features,
+    string? Binding,
+    string? ReleaseDate,
+    string? ImageUrl,
+    List<string>? Images
 );
 
 public record CreateCartItemRequest(

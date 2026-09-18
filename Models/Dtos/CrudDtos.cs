@@ -33,22 +33,22 @@ public record UpdateReviewRequest(
 public record CreateGalleryRequest(
     Guid ProductId,
 
-    [property: Required]
-    [property: StringLength(1000, MinimumLength = 1)]
+    [Required]
+    [StringLength(1000, MinimumLength = 1)]
     string Path,
 
-    [property: Range(0, int.MaxValue)]
+    [Range(0, int.MaxValue)]
     int SortOrder,
 
     bool IsMain
 );
 
 public record UpdateGalleryRequest(
-    [property: Required]
-    [property: StringLength(1000, MinimumLength = 1)]
+    [Required]
+    [StringLength(1000, MinimumLength = 1)]
     string Path,
 
-    [property: Range(0, int.MaxValue)]
+    [Range(0, int.MaxValue)]
     int SortOrder,
 
     bool IsMain
@@ -57,22 +57,22 @@ public record UpdateGalleryRequest(
 public record CreateVideoRequest(
     Guid ProductId,
 
-    [property: Required]
-    [property: StringLength(1000, MinimumLength = 1)]
+    [Required]
+    [StringLength(1000, MinimumLength = 1)]
     string Path,
 
-    [property: Range(0, int.MaxValue)]
+    [Range(0, int.MaxValue)]
     int SortOrder,
 
     bool IsMain
 );
 
 public record UpdateVideoRequest(
-    [property: Required]
-    [property: StringLength(1000, MinimumLength = 1)]
+    [Required]
+    [StringLength(1000, MinimumLength = 1)]
     string Path,
 
-    [property: Range(0, int.MaxValue)]
+    [Range(0, int.MaxValue)]
     int SortOrder,
 
     bool IsMain

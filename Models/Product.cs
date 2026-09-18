@@ -21,6 +21,17 @@ public class Product
     public Seller Seller { get; set; } = null!;
     public Category Category { get; set; } = null!;
 
+    public string? Asin { get; set; }
+    public string? ItemModelNumber { get; set; }
+    public string? Manufacturer { get; set; }
+    public string? CountryOfOrigin { get; set; }
+    public string? ProductDimensions { get; set; }
+    public string? ItemWeight { get; set; }
+    public string? WarrantyInfo { get; set; }
+    public string? Features { get; set; } // Можно хранить как JSON-строку
+    public string? Binding { get; set; }
+    public string? ReleaseDate { get; set; }
+
     public ICollection<ProductAttributeValue> AttributeValues { get; set; } = new List<ProductAttributeValue>();
     public ICollection<ProductGallery> Galleries { get; set; } = new List<ProductGallery>();
     public ICollection<ProductVideo> Videos { get; set; } = new List<ProductVideo>();

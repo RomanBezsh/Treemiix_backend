@@ -1,4 +1,5 @@
 using System.Text;
+using System.Globalization;
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Middleware;
 using CloneAmazonBack.Services;
@@ -8,6 +9,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Threading.RateLimiting;
+
+CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,7 +100,12 @@ builder.Services.AddScoped<IProductVideoService, ProductVideoService>();
 builder.Services.AddScoped<IProductAttributeValueService, ProductAttributeValueService>();
 builder.Services.AddScoped<IPromoCodeProductService, PromoCodeProductService>();
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
+        options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+    });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -123,6 +132,8 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
     await DbSeeder.SeedRolesAsync(dbContext, configuration);
+    // Принудительное заполнение товарами
+    await DbSeeder.SeedProductsAsync(dbContext);
 }
 
 app.Run();
