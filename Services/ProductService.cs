@@ -20,6 +20,7 @@ public class ProductService : IProductService
         Guid? categoryId,
         Guid? sellerId,
         bool? isActive,
+        string? search,
         int page,
         int pageSize)
     {
@@ -29,6 +30,14 @@ public class ProductService : IProductService
             .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
             .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
             .WhereIf(isActive, p => p.IsActive == isActive!.Value);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var searchText = search.Trim();
+
+            query = query.Where(p =>
+                EF.Functions.ILike(p.Name, $"%{searchText}%"));
+        }
 
         var totalCount = await query.CountAsync();
 

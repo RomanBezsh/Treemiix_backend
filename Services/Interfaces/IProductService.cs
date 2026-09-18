@@ -9,6 +9,7 @@ public interface IProductService
         Guid? categoryId,
         Guid? sellerId,
         bool? isActive,
+        string? search,
         int page,
         int pageSize);
 
