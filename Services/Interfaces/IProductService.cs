@@ -10,6 +10,7 @@ public interface IProductService
         Guid? sellerId,
         bool? isActive,
         string? search,
+        string? sort,
         int page,
         int pageSize);
 

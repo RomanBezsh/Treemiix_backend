@@ -24,6 +24,7 @@ public class ProductsController : ControllerBase
         [FromQuery] Guid? sellerId,
         [FromQuery] bool? isActive,
         [FromQuery] string? search,
+        [FromQuery] string? sort = "featured",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
@@ -41,6 +42,7 @@ public class ProductsController : ControllerBase
             sellerId,
             isActive,
             search,
+            sort,
             page,
             pageSize);
 

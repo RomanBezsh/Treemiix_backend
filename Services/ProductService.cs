@@ -21,6 +21,7 @@ public class ProductService : IProductService
         Guid? sellerId,
         bool? isActive,
         string? search,
+        string? sort,
         int page,
         int pageSize)
     {
@@ -40,6 +41,32 @@ public class ProductService : IProductService
         }
 
         var totalCount = await query.CountAsync();
+
+        query = sort?.ToLower() switch
+        {
+            "priceasc" =>
+                query.OrderBy(p => p.Price),
+
+            "pricedesc" =>
+                query.OrderByDescending(p => p.Price),
+
+            "rating" =>
+                query.OrderByDescending(p =>
+                    p.Reviews.Any()
+                        ? p.Reviews.Average(r => r.Rating)
+                        : 0),
+
+            "newest" =>
+                query.OrderByDescending(p => p.CreatedAt),
+
+            "featured" =>
+                query.OrderByDescending(p => p.Rating)
+                     .ThenByDescending(p => p.CreatedAt),
+
+            _ =>
+                query.OrderByDescending(p => p.Rating)
+                     .ThenByDescending(p => p.CreatedAt)
+        };
 
         var items = await query
             .Skip((page - 1) * pageSize)
