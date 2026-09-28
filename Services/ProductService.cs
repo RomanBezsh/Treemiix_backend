@@ -21,6 +21,8 @@ public class ProductService : IProductService
         Guid? sellerId,
         bool? isActive,
         string? search,
+        decimal? minPrice,
+        decimal? maxPrice,
         string? sort,
         int page,
         int pageSize)
@@ -38,6 +40,16 @@ public class ProductService : IProductService
 
             query = query.Where(p =>
                 EF.Functions.ILike(p.Name, $"%{searchText}%"));
+        }
+
+        if (minPrice.HasValue)
+        {
+            query = query.Where(p => p.Price >= minPrice.Value);
+        }
+
+        if (maxPrice.HasValue)
+        {
+            query = query.Where(p => p.Price <= maxPrice.Value);
         }
 
         var totalCount = await query.CountAsync();

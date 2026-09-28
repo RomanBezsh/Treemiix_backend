@@ -10,6 +10,8 @@ public interface IProductService
         Guid? sellerId,
         bool? isActive,
         string? search,
+        decimal? minPrice,
+        decimal? maxPrice,
         string? sort,
         int page,
         int pageSize);
