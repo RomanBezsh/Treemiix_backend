@@ -1,3 +1,4 @@
+
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
@@ -23,6 +24,7 @@ public class ProductService : IProductService
         string? search,
         decimal? minPrice,
         decimal? maxPrice,
+        int? minRating,
         string? sort,
         int page,
         int pageSize)
@@ -50,6 +52,11 @@ public class ProductService : IProductService
         if (maxPrice.HasValue)
         {
             query = query.Where(p => p.Price <= maxPrice.Value);
+        }
+
+        if (minRating.HasValue)
+        {
+            query = query.Where(p => p.Rating >= minRating.Value);
         }
 
         var totalCount = await query.CountAsync();

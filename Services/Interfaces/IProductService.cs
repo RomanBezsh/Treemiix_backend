@@ -1,3 +1,4 @@
+
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
 
@@ -12,6 +13,7 @@ public interface IProductService
         string? search,
         decimal? minPrice,
         decimal? maxPrice,
+        int? minRating,
         string? sort,
         int page,
         int pageSize);

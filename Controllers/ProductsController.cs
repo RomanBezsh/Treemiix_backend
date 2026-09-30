@@ -1,3 +1,4 @@
+
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -26,6 +27,7 @@ public class ProductsController : ControllerBase
         [FromQuery] string? search,
         [FromQuery] decimal? minPrice,
         [FromQuery] decimal? maxPrice,
+        [FromQuery] int? minRating,
         [FromQuery] string? sort = "featured",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
@@ -39,6 +41,15 @@ public class ProductsController : ControllerBase
         if (pageSize > 100)
             pageSize = 100;
 
+        if (minRating.HasValue &&
+            (minRating.Value < 1 || minRating.Value > 5))
+        {
+            return BadRequest(new
+            {
+                message = "Minimum rating must be between 1 and 5."
+            });
+        }
+
         var result = await _productService.GetAllAsync(
             categoryId,
             sellerId,
@@ -46,6 +57,7 @@ public class ProductsController : ControllerBase
             search,
             minPrice,
             maxPrice,
+            minRating,
             sort,
             page,
             pageSize);
