@@ -19,6 +19,7 @@ public class CartItemService : ICartItemService
     {
         return await _context.CartItems
             .Include(i => i.Product)
+            .ThenInclude(p => p.Galleries)
             .Where(i => i.CartId == cartId && i.Cart.UserId == userId)
             .ToListAsync();
     }
@@ -36,6 +37,18 @@ public class CartItemService : ICartItemService
 
         if (product == null)
             throw new InvalidOperationException("Product not found or inactive");
+
+        var existingItem = await _context.CartItems
+            .FirstOrDefaultAsync(i =>
+                i.CartId == request.CartId &&
+                i.ProductId == request.ProductId);
+
+        if (existingItem != null)
+        {
+            existingItem.Quantity += request.Quantity;
+            await _context.SaveChangesAsync();
+            return existingItem;
+        }
 
         var item = new CartItem
         {

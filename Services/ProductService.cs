@@ -18,25 +18,59 @@ public class ProductService : IProductService
 
     public async Task<List<Product>> GetAllAsync(Guid? categoryId, Guid? sellerId, bool? isActive)
     {
-        return await _context.Products
+        var products = await _context.Products
             .Include(p => p.Category)
             .Include(p => p.Seller)
             .Include(p => p.Galleries)
+            .Include(p => p.AttributeValues)
             .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
             .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
             .WhereIf(isActive, p => p.IsActive == isActive!.Value)
             .ToListAsync();
+
+        await FillRatingsAsync(products);
+
+        return products;
     }
 
     public async Task<Product?> GetByIdAsync(Guid id)
     {
-        return await _context.Products
+        var product = await _context.Products
             .Include(p => p.Category)
             .Include(p => p.Seller)
             .Include(p => p.Galleries)
             .Include(p => p.Videos)
             .Include(p => p.AttributeValues)
             .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (product != null)
+        {
+            await FillRatingsAsync(new List<Product> { product });
+        }
+
+        return product;
+    }
+
+    private async Task FillRatingsAsync(List<Product> products)
+    {
+        if (products.Count == 0) return;
+
+        var ids = products.Select(p => p.Id).ToList();
+
+        var averages = await _context.ProductReviews
+            .Where(r => ids.Contains(r.ProductId))
+            .GroupBy(r => r.ProductId)
+            .Select(g => new { ProductId = g.Key, Avg = g.Average(r => r.Rating) })
+            .ToListAsync();
+
+        foreach (var product in products)
+        {
+            var match = averages.FirstOrDefault(a => a.ProductId == product.Id);
+            if (match != null)
+            {
+                product.Rating = (int)Math.Round(match.Avg);
+            }
+        }
     }
 
     public async Task<Product> CreateAsync(CreateProductRequest request)
