@@ -19,6 +19,8 @@ public class ProductReviewService : IProductReviewService
     {
         return await _context.ProductReviews
             .Include(r => r.User)
+            .Include(r => r.Gallery)
+            .Include(r => r.Video)
             .Where(r => r.ProductId == productId)
             .OrderByDescending(r => r.CreatedAt)
             .ToListAsync();
@@ -44,7 +46,8 @@ public class ProductReviewService : IProductReviewService
             ProductVideoId = request.ProductVideoId,
             Text = request.Text,
             Rating = request.Rating,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            MediaPaths = request.MediaPaths is { Count: > 0 } ? System.Text.Json.JsonSerializer.Serialize(request.MediaPaths) : null
         };
 
         _context.ProductReviews.Add(review);

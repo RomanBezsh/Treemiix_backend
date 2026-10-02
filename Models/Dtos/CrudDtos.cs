@@ -9,12 +9,14 @@ public record CreateReviewRequest(
 
     Guid? ProductVideoId,
 
-    [property: Required]
-    [property: StringLength(5000, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(5000, MinimumLength = 1)]
     string Text,
 
-    [property: Range(1, 5)]
-    int Rating
+    [param: Range(1, 5)]
+    int Rating,
+
+    List<string>? MediaPaths
 );
 
 public record UpdateReviewRequest(
@@ -22,11 +24,11 @@ public record UpdateReviewRequest(
 
     Guid? ProductVideoId,
 
-    [property: Required]
-    [property: StringLength(5000, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(5000, MinimumLength = 1)]
     string Text,
 
-    [property: Range(1, 5)]
+    [param: Range(1, 5)]
     int Rating
 );
 
@@ -81,40 +83,40 @@ public record UpdateVideoRequest(
 public record CreateAttributeRequest(
     Guid ProductId,
 
-    [property: Required]
-    [property: StringLength(100, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(100, MinimumLength = 1)]
     string NameAttr,
 
-    [property: Required]
-    [property: StringLength(500, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(500, MinimumLength = 1)]
     string Value
 );
 
 public record UpdateAttributeRequest(
-    [property: Required]
-    [property: StringLength(100, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(100, MinimumLength = 1)]
     string NameAttr,
 
-    [property: Required]
-    [property: StringLength(500, MinimumLength = 1)]
+    [param: Required]
+    [param: StringLength(500, MinimumLength = 1)]
     string Value
 );
 
 public record CreateRoleRequest(
-    [property: Required]
-    [property: StringLength(50, MinimumLength = 2)]
+    [param: Required]
+    [param: StringLength(50, MinimumLength = 2)]
     string Name,
 
-    [property: Range(0, int.MaxValue)]
+    [param: Range(0, int.MaxValue)]
     int Rights
 );
 
 public record UpdateRoleRequest(
-    [property: Required]
-    [property: StringLength(50, MinimumLength = 2)]
+    [param: Required]
+    [param: StringLength(50, MinimumLength = 2)]
     string Name,
 
-    [property: Range(0, int.MaxValue)]
+    [param: Range(0, int.MaxValue)]
     int Rights
 );
 

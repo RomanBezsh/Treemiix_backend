@@ -88,6 +88,7 @@ public class ProductReview
     public string Text { get; set; } = string.Empty;
     public int Rating { get; set; }
     public DateTime CreatedAt { get; set; }
+    public string? MediaPaths { get; set; } // JSON-массив путей к медиафайлам в wwwroot/media
 
     public User User { get; set; } = null!;
     public Product Product { get; set; } = null!;
