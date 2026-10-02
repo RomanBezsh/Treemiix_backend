@@ -22,7 +22,9 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
+        policy.WithOrigins(
+                "http://localhost:3000",
+                "https://treemiix.vercel.app")
               .AllowAnyMethod()
               .AllowAnyHeader();
     });
@@ -47,6 +49,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddHttpClient();
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -121,6 +124,7 @@ app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.UseHttpsRedirection();
+app.UseStaticFiles(); // Добавили поддержку статики
 app.UseCors();
 app.UseRateLimiter();
 app.UseAuthentication();
