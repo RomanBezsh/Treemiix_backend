@@ -1,22 +1,21 @@
 using System.Text;
 using System.Globalization;
-using System.IO;
-using System.Reflection;
+using System.Threading.RateLimiting;
+using Asp.Versioning;
 using CloneAmazonBack.Data;
 using CloneAmazonBack.Middleware;
 using CloneAmazonBack.Services;
 using CloneAmazonBack.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Compact;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using StackExchange.Redis;
-using Asp.Versioning;
-using System.Threading.RateLimiting;
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
@@ -35,7 +34,6 @@ try
 
     // Replace default logging with Serilog
     builder.Host.UseSerilog((context, services, configuration) => configuration
-        .ReadFrom.Configuration(context.Configuration)
         .ReadFrom.Services(services)
         .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
         .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
@@ -58,8 +56,16 @@ try
             restrictedToMinimumLevel: LogEventLevel.Error,
             flushToDiskInterval: TimeSpan.FromSeconds(1)));
 
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            "Connection string 'DefaultConnection' is not configured. " +
+            "Set it in appsettings.json or the ConnectionStrings__DefaultConnection environment variable.");
+    }
+
     builder.Services.AddDbContext<AppDbContext>(options =>
-        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+        options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure(3)));
 
     // CORS - restricted origins from configuration
     var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000", "http://localhost:5173"];
@@ -76,7 +82,7 @@ try
 
     // Health Checks
     builder.Services.AddHealthChecks()
-        .AddNpgSql(builder.Configuration.GetConnectionString("DefaultConnection")!);
+        .AddNpgSql(connectionString, tags: ["ready"]);
 
     // Redis Cache
     var redisOptions = builder.Configuration.GetSection("Redis").Get<RedisCacheOptions>() ?? new RedisCacheOptions();
@@ -95,7 +101,7 @@ try
         
         // Add Redis health check
         builder.Services.AddHealthChecks()
-            .AddRedis(redisOptions.ConnectionString);
+            .AddRedis(redisOptions.ConnectionString, tags: ["ready"]);
     }
     else
     {
@@ -124,7 +130,8 @@ try
                 ValidateIssuerSigningKey = true,
                 ValidIssuer = jwtSettings["Issuer"],
                 ValidAudience = jwtSettings["Audience"],
-                IssuerSigningKey = new SymmetricSecurityKey(jwtKey)
+                IssuerSigningKey = new SymmetricSecurityKey(jwtKey),
+                ClockSkew = TimeSpan.FromMinutes(1)
             };
         });
 
@@ -191,19 +198,28 @@ try
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
 
-    // API Versioning
+    // IHttpClientFactory is required by UploadController (SSRF-safe media import).
+    builder.Services.AddHttpClient();
+
+    // Allow large media uploads (the controller enforces its own per-file limit).
+    builder.Services.Configure<FormOptions>(options =>
+    {
+        options.MultipartBodyLengthLimit = 210L * 1024 * 1024;
+    });
+
+    // API Versioning (version is optional; sent via the "api-version" header
+    // so that existing /api/... routes stay backwards compatible).
     builder.Services.AddApiVersioning(options =>
     {
         options.DefaultApiVersion = new ApiVersion(1, 0);
         options.AssumeDefaultVersionWhenUnspecified = true;
         options.ReportApiVersions = true;
-        options.ApiVersionReader = new UrlSegmentApiVersionReader();
+        options.ApiVersionReader = new HeaderApiVersionReader("api-version");
     })
     .AddMvc()
     .AddApiExplorer(options =>
     {
         options.GroupNameFormat = "'v'VVV";
-        options.SubstituteApiVersionInUrl = true;
     });
 
     var app = builder.Build();
@@ -237,14 +253,23 @@ try
         app.UseSwaggerUI();
     }
 
+    // Respect X-Forwarded-* headers coming from reverse proxies (Render, nginx, Docker).
+    // Without this the rate limiter sees the proxy IP and puts every client into one partition.
+    var forwardedHeadersOptions = new ForwardedHeadersOptions
+    {
+        ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+    };
+    forwardedHeadersOptions.KnownNetworks.Clear();
+    forwardedHeadersOptions.KnownProxies.Clear();
+    app.UseForwardedHeaders(forwardedHeadersOptions);
+
     // Security headers middleware (CSP, HSTS, etc.)
     app.Use(async (context, next) =>
     {
         context.Response.Headers["X-Content-Type-Options"] = "nosniff";
         context.Response.Headers["X-Frame-Options"] = "DENY";
-        context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
         context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
-        
+
         // CSP - restrictive but allows Swagger UI in Development
         var csp = app.Environment.IsDevelopment()
             ? "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:;"
@@ -262,38 +287,18 @@ try
     app.UseMiddleware<ExceptionHandlingMiddleware>();
 
     app.UseHttpsRedirection();
+
+    // Serve uploaded media from wwwroot (/media, /uploads).
+    app.UseStaticFiles();
+
     app.UseCors();
     app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
+
     app.MapControllers();
 
-    // Health checks endpoint
-    app.MapHealthChecks("/health");
-    app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-    {
-        Predicate = check => check.Tags.Contains("ready")
-    });
-    app.MapHealthChecks("/health/live", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
-    {
-        Predicate = _ => false
-    });
-
-    // API Version prefix middleware - add /v1 prefix if missing for API routes
-    app.Use(async (context, next) =>
-    {
-        var path = context.Request.Path.Value;
-        if (!string.IsNullOrEmpty(path) && path.StartsWith("/api/") && !path.StartsWith("/api/v"))
-        {
-            context.Request.Path = "/api/v1" + path.Substring(4);
-        }
-        await next();
-    });
-
-    app.UseAuthorization();
-    app.MapControllers();
-
-    // Health checks endpoint
+    // Health checks endpoints
     app.MapHealthChecks("/health");
     app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
@@ -308,9 +313,20 @@ try
     {
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
+
+        if (configuration.GetValue("Database:MigrateOnStartup", false))
+        {
+            await dbContext.Database.MigrateAsync();
+        }
+
         await DbSeeder.SeedRolesAsync(dbContext, configuration);
-        // Принудительное заполнение товарами
-        await DbSeeder.SeedProductsAsync(dbContext);
+
+        // Demo catalog data must never be written to a production database.
+        if (app.Environment.IsDevelopment() &&
+            configuration.GetValue("Database:SeedDemoData", true))
+        {
+            await DbSeeder.SeedDemoDataAsync(dbContext);
+        }
     }
 
     app.Run();
