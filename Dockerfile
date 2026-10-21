@@ -10,7 +10,8 @@ WORKDIR /src
 
 COPY ["CloneAmazonBack.csproj", "./"]
 RUN dotnet restore "CloneAmazonBack.csproj"
-
+ARG CACHE_BUST=1
+RUN echo "Cache bust: $(date)" 
 COPY . .
 RUN dotnet build "CloneAmazonBack.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
