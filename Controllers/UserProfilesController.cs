@@ -67,19 +67,11 @@ public class UserProfilesController : ControllerBase
     public async Task<IActionResult> Update(UpdateProfileRequest request)
     {
         var userId = User.GetUserId();
-        try
-        {
-            var updated = await _profileService.UpdateAsync(userId, request);
+        var updated = await _profileService.UpdateAsync(userId, request);
 
-            if (!updated)
-                return NotFound("Profile not found");
+        if (!updated)
+            return NotFound("Profile not found");
 
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            // Возвращаем детали ошибки для отладки
-            return StatusCode(500, new { message = ex.Message, inner = ex.InnerException?.Message });
-        }
+        return NoContent();
     }
 }

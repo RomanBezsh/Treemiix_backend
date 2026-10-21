@@ -40,8 +40,16 @@ public class ProductReviewsController : ControllerBase
     public async Task<IActionResult> Create(CreateReviewRequest request)
     {
         var userId = User.GetUserId();
-        var review = await _reviewService.CreateAsync(userId, request);
-        return CreatedAtAction(nameof(GetById), new { id = review.Id }, review);
+
+        try
+        {
+            var review = await _reviewService.CreateAsync(userId, request);
+            return CreatedAtAction(nameof(GetById), new { id = review.Id }, review);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]

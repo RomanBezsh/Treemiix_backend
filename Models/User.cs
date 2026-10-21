@@ -1,16 +1,26 @@
 namespace CloneAmazonBack.Models;
 
+using System.Text.Json.Serialization;
+
 public class User
 {
     public Guid Id { get; set; }
+
+    [JsonIgnore]
     public string Password { get; set; } = string.Empty;
+
     public string FirstName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public bool EmailConfirmed { get; set; }
+
+    [JsonIgnore]
     public string? EmailConfirmationCode { get; set; }
+
+    [JsonIgnore]
     public DateTime? EmailConfirmationCodeExpiresAt { get; set; }
+
     public Guid UserRoleId { get; set; }
 
     public UserRole UserRole { get; set; } = null!;

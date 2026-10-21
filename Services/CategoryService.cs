@@ -56,6 +56,9 @@ public class CategoryService : ICategoryService
         if (category == null)
             return;
 
+        if (request.ParentId == id)
+            throw new InvalidOperationException("A category cannot be its own parent");
+
         category.ParentId = request.ParentId;
         category.Name = request.Name;
         category.Slug = request.Slug;
@@ -71,6 +74,12 @@ public class CategoryService : ICategoryService
         var category = await _context.Categories.FindAsync(id);
         if (category == null)
             return;
+
+        if (await _context.Products.AnyAsync(p => p.CategoryId == id))
+            throw new InvalidOperationException("Cannot delete a category that contains products");
+
+        if (await _context.Categories.AnyAsync(c => c.ParentId == id))
+            throw new InvalidOperationException("Cannot delete a category that contains subcategories");
 
         _context.Categories.Remove(category);
         await _context.SaveChangesAsync();

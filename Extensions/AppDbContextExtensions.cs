@@ -11,7 +11,7 @@ public static class AppDbContextExtensions
     {
         var totalVotes = await context.QuestionVotes
             .Where(v => v.QuestionId == questionId)
-            .SumAsync(v => (int)v.Value);
+            .SumAsync(v => (int?)v.Value) ?? 0;
 
         var question = await context.ProductQuestions.FindAsync(questionId);
         if (question != null)
@@ -48,18 +48,48 @@ public static class AppDbContextExtensions
         return new string(buffer);
     }
 
-    public static async Task<OrderDiscountResult?> ApplyPromoCodeAsync(this AppDbContext context, Guid? promoCodeId, decimal totalAmount)
+    public static async Task<OrderDiscountResult?> ApplyPromoCodeAsync(
+        this AppDbContext context,
+        Guid? promoCodeId,
+        decimal totalAmount,
+        Guid? userId = null)
     {
         if (!promoCodeId.HasValue)
             return null;
 
         var promo = await context.PromoCodes.FindAsync(promoCodeId.Value);
+        var now = DateTime.UtcNow;
+
         if (promo == null || !promo.IsActive)
             return null;
+
+        if (now < promo.StartsAt || now > promo.ExpiresAt)
+            return null;
+
+        if (promo.MaxActivations > 0 && promo.UsedActivationsCount >= promo.MaxActivations)
+            return null;
+
+        if (promo.MinOrderAmount.HasValue && totalAmount < promo.MinOrderAmount.Value)
+            return null;
+
+        if (userId.HasValue && promo.LimitPerUser > 0)
+        {
+            var userUsages = await context.Orders
+                .CountAsync(o => o.PromoCodeId == promo.Id && o.UserId == userId.Value);
+
+            if (userUsages >= promo.LimitPerUser)
+                return null;
+        }
 
         var discountAmount = promo.DiscountType == DiscountType.Percentage
             ? totalAmount * promo.DiscountValue / 100
             : promo.DiscountValue;
+
+        if (promo.MaxDiscountAmount.HasValue)
+            discountAmount = Math.Min(discountAmount, promo.MaxDiscountAmount.Value);
+
+        // The discount can never make the order free beyond its total.
+        discountAmount = Math.Clamp(discountAmount, 0m, totalAmount);
 
         promo.UsedActivationsCount++;
 

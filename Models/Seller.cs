@@ -1,5 +1,7 @@
 namespace CloneAmazonBack.Models;
 
+using System.Text.Json.Serialization;
+
 public class Seller
 {
     public Guid Id { get; set; }
@@ -10,8 +12,14 @@ public class Seller
     public string? LogoUrl { get; set; }
     public string? Description { get; set; }
 
+    // Sensitive legal/financial data is never serialized to API clients.
+    [JsonIgnore]
     public string? TaxNumber { get; set; }
+
+    [JsonIgnore]
     public string? LegalAddress { get; set; }
+
+    [JsonIgnore]
     public string? BankAccount { get; set; }
 
     public decimal Rating { get; set; }

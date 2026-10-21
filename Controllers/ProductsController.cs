@@ -1,3 +1,4 @@
+using CloneAmazonBack.Extensions;
 using CloneAmazonBack.Models;
 using CloneAmazonBack.Models.Dtos;
 using CloneAmazonBack.Services.Interfaces;
@@ -12,10 +13,17 @@ namespace CloneAmazonBack.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
+    private readonly ISellerService _sellerService;
+    private readonly ICategoryService _categoryService;
 
-    public ProductsController(IProductService productService)
+    public ProductsController(
+        IProductService productService,
+        ISellerService sellerService,
+        ICategoryService categoryService)
     {
         _productService = productService;
+        _sellerService = sellerService;
+        _categoryService = categoryService;
     }
 
     [AllowAnonymous]
@@ -40,14 +48,53 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateProductRequest request)
     {
-        var product = await _productService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+        if (!User.IsInRole(Roles.Admin))
+        {
+            var seller = await GetOwnSellerAsync();
+            if (seller is null)
+                return Forbid();
+
+            // A seller can only publish products under their own store.
+            request = request with { SellerId = seller.Id };
+        }
+
+        if (await _sellerService.GetByIdAsync(request.SellerId) is null)
+            return BadRequest(new { message = "Seller not found" });
+
+        if (await _categoryService.GetByIdAsync(request.CategoryId) is null)
+            return BadRequest(new { message = "Category not found" });
+
+        try
+        {
+            var product = await _productService.CreateAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = product.Id }, product);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateProductRequest request)
     {
+        var product = await _productService.GetByIdAsync(id);
+        if (product is null)
+            return NotFound();
+
+        if (!User.IsInRole(Roles.Admin))
+        {
+            var seller = await GetOwnSellerAsync();
+            if (seller is null || product.SellerId != seller.Id)
+                return Forbid();
+
+            request = request with { SellerId = seller.Id };
+        }
+
+        if (await _categoryService.GetByIdAsync(request.CategoryId) is null)
+            return BadRequest(new { message = "Category not found" });
+
         await _productService.UpdateAsync(id, request);
         return NoContent();
     }
@@ -56,6 +103,17 @@ public class ProductsController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<IActionResult> SoftDelete(Guid id)
     {
+        var product = await _productService.GetByIdAsync(id);
+        if (product is null)
+            return NotFound();
+
+        if (!User.IsInRole(Roles.Admin))
+        {
+            var seller = await GetOwnSellerAsync();
+            if (seller is null || product.SellerId != seller.Id)
+                return Forbid();
+        }
+
         await _productService.SoftDeleteAsync(id);
         return NoContent();
     }
@@ -66,5 +124,11 @@ public class ProductsController : ControllerBase
     {
         await _productService.HardDeleteAsync(id);
         return NoContent();
+    }
+
+    private async Task<Seller?> GetOwnSellerAsync()
+    {
+        var seller = await _sellerService.GetByUserAsync(User.GetUserId());
+        return seller is { Status: SellerStatus.Active } ? seller : null;
     }
 }

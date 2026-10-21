@@ -27,6 +27,12 @@ public class ProductAnswerService : IProductAnswerService
 
     public async Task<ProductAnswer> CreateAsync(Guid userId, CreateAnswerRequest request)
     {
+        var questionExists = await _context.ProductQuestions
+            .AnyAsync(q => q.Id == request.QuestionId);
+
+        if (!questionExists)
+            throw new InvalidOperationException("Question not found");
+
         var answer = new ProductAnswer
         {
             Id = Guid.NewGuid(),

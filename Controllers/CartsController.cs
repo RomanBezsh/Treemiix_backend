@@ -56,7 +56,11 @@ public class CartsController : ControllerBase
     public async Task<IActionResult> ApplyPromoCode(Guid id, Guid? promoCodeId)
     {
         var userId = User.GetUserId();
-        await _cartService.ApplyPromoCodeAsync(id, promoCodeId, userId);
+        var updated = await _cartService.ApplyPromoCodeAsync(id, promoCodeId, userId);
+
+        if (!updated)
+            return BadRequest(new { message = "Cart or promo code was not found or is not active" });
+
         return NoContent();
     }
 

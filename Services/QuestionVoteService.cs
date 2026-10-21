@@ -18,10 +18,24 @@ public class QuestionVoteService : IQuestionVoteService
 
     public async Task VoteAsync(Guid userId, VoteRequest request)
     {
+        var questionExists = await _context.ProductQuestions
+            .AnyAsync(q => q.Id == request.QuestionId);
+
+        if (!questionExists)
+            throw new InvalidOperationException("Question not found");
+
         var existingVote = await _context.QuestionVotes
             .FirstOrDefaultAsync(v => v.QuestionId == request.QuestionId && v.UserId == userId);
 
-        if (existingVote != null)
+        // A zero value means "remove my vote".
+        if (request.Value == 0)
+        {
+            if (existingVote is null)
+                return;
+
+            _context.QuestionVotes.Remove(existingVote);
+        }
+        else if (existingVote is not null)
         {
             existingVote.Value = request.Value;
         }
@@ -36,6 +50,8 @@ public class QuestionVoteService : IQuestionVoteService
             });
         }
 
+        // Persist the vote first: the recalculation query must see the new state.
+        await _context.SaveChangesAsync();
         await _context.RecalculateVotesCountAsync(request.QuestionId);
         await _context.SaveChangesAsync();
     }
@@ -50,6 +66,7 @@ public class QuestionVoteService : IQuestionVoteService
         var questionId = vote.QuestionId;
 
         _context.QuestionVotes.Remove(vote);
+        await _context.SaveChangesAsync();
         await _context.RecalculateVotesCountAsync(questionId);
         await _context.SaveChangesAsync();
 

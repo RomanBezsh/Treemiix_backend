@@ -18,6 +18,7 @@ public class PromoCodesController : ControllerBase
         _promoCodeService = promoCodeService;
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
@@ -25,6 +26,7 @@ public class PromoCodesController : ControllerBase
         return Ok(codes);
     }
 
+    [Authorize(Roles = Roles.Admin)]
     [HttpGet("{id}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -33,7 +35,6 @@ public class PromoCodesController : ControllerBase
         return Ok(code);
     }
 
-    [AllowAnonymous]
     [HttpGet("code/{code}")]
     public async Task<IActionResult> GetByCode(string code)
     {
@@ -46,8 +47,15 @@ public class PromoCodesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreatePromoCodeRequest request)
     {
-        var promo = await _promoCodeService.CreateAsync(request);
-        return CreatedAtAction(nameof(GetById), new { id = promo.Id }, promo);
+        try
+        {
+            var promo = await _promoCodeService.CreateAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = promo.Id }, promo);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [Authorize(Roles = Roles.Admin)]

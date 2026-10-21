@@ -64,6 +64,9 @@ public class GiftCardService : IGiftCardService
         if (!card.IsActive || card.CurrentBalance <= 0)
             throw new InvalidOperationException("Gift card is not active or has no balance");
 
+        if (card.ExpiresAt.HasValue && card.ExpiresAt.Value < DateTime.UtcNow)
+            throw new InvalidOperationException("Gift card has expired");
+
         if (card.ActivatedByUserId.HasValue)
             throw new InvalidOperationException("Gift card already activated");
 

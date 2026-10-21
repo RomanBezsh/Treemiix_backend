@@ -32,6 +32,15 @@ public class PromoCodeService : IPromoCodeService
 
     public async Task<PromoCode> CreateAsync(CreatePromoCodeRequest request)
     {
+        if (request.ExpiresAt <= request.StartsAt)
+            throw new InvalidOperationException("Expiration date must be after the start date");
+
+        if (request.DiscountType == DiscountType.Percentage && request.DiscountValue > 100)
+            throw new InvalidOperationException("Percentage discount cannot exceed 100%");
+
+        if (await _context.PromoCodes.AnyAsync(p => p.Code == request.Code))
+            throw new InvalidOperationException("A promo code with this code already exists");
+
         var promo = new PromoCode
         {
             Id = Guid.NewGuid(),

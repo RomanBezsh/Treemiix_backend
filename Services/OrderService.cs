@@ -26,6 +26,15 @@ public class OrderService : IOrderService
             .ToListAsync();
     }
 
+    public async Task<List<Order>> GetForSellerAsync(Guid sellerUserId)
+    {
+        return await _context.Orders
+            .Include(o => o.Items)
+            .Where(o => o.Seller.UserId == sellerUserId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<Order?> GetByIdAsync(Guid id, Guid userId)
     {
         return await _context.Orders
@@ -90,7 +99,7 @@ public class OrderService : IOrderService
 
         order.TotalAmount = totalAmount;
 
-        var discount = await _context.ApplyPromoCodeAsync(request.PromoCodeId, totalAmount);
+        var discount = await _context.ApplyPromoCodeAsync(request.PromoCodeId, totalAmount, userId);
         if (discount != null)
             order.DiscountAmount = discount.DiscountAmount;
 
@@ -100,11 +109,30 @@ public class OrderService : IOrderService
         return order;
     }
 
-    public async Task UpdateStatusAsync(Guid id, OrderStatus status)
+    public async Task UpdateStatusAsync(
+        Guid id,
+        OrderStatus status,
+        Guid? requesterUserId = null,
+        bool isAdmin = false)
     {
         var order = await _context.Orders.FindAsync(id);
+
         if (order == null)
             return;
+
+        // A seller may only manage orders that belong to their own store.
+        if (!isAdmin && requesterUserId.HasValue)
+        {
+            var seller = await _context.Sellers
+                .FirstOrDefaultAsync(s => s.UserId == requesterUserId.Value);
+
+            if (seller == null || order.SellerId != seller.Id)
+                throw new UnauthorizedAccessException("Order belongs to another seller");
+        }
+
+        // Terminal states must not be changed by sellers.
+        if (!isAdmin && order.Status is OrderStatus.Cancelled or OrderStatus.Refunded)
+            throw new InvalidOperationException("A cancelled or refunded order cannot change its status");
 
         order.Status = status;
         order.UpdatedAt = DateTime.UtcNow;

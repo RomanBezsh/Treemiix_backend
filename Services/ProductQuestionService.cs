@@ -36,6 +36,10 @@ public class ProductQuestionService : IProductQuestionService
 
     public async Task<ProductQuestion> CreateAsync(Guid userId, CreateQuestionRequest request)
     {
+        var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);
+        if (!productExists)
+            throw new InvalidOperationException("Product not found");
+
         var question = new ProductQuestion
         {
             Id = Guid.NewGuid(),

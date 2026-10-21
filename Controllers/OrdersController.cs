@@ -23,8 +23,15 @@ public class OrdersController : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] Guid? sellerId)
     {
         var userId = User.GetUserId();
-        var orders = await _orderService.GetAllAsync(userId, sellerId);
-        return Ok(orders);
+
+        if (User.IsInRole(Roles.Seller) && !User.IsInRole(Roles.Admin))
+        {
+            var orders = await _orderService.GetForSellerAsync(userId);
+            return Ok(orders);
+        }
+
+        var userOrders = await _orderService.GetAllAsync(userId, sellerId);
+        return Ok(userOrders);
     }
 
     [HttpGet("{id}")]
@@ -56,7 +63,22 @@ public class OrdersController : ControllerBase
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, OrderStatus status)
     {
-        await _orderService.UpdateStatusAsync(id, status);
+        var userId = User.GetUserId();
+        var isAdmin = User.IsInRole(Roles.Admin);
+
+        try
+        {
+            await _orderService.UpdateStatusAsync(id, status, userId, isAdmin);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+
         return NoContent();
     }
 }

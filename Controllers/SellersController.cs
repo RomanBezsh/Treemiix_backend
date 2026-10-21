@@ -49,17 +49,48 @@ public class SellersController : ControllerBase
     public async Task<IActionResult> Create(CreateSellerRequest request)
     {
         var userId = User.GetUserId();
-        var seller = await _sellerService.CreateAsync(userId, request);
 
-        return CreatedAtAction(nameof(GetById), new { id = seller.Id }, seller);
+        // Sellers cannot assign their own commission or skip verification.
+        if (!User.IsInRole(Roles.Admin))
+            request = request with { CommissionRate = 0.10m };
+
+        try
+        {
+            var seller = await _sellerService.CreateAsync(userId, request);
+            return CreatedAtAction(nameof(GetById), new { id = seller.Id }, seller);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [Authorize(Roles = $"{Roles.Seller},{Roles.Admin}")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, CreateSellerRequest request)
     {
-        await _sellerService.UpdateAsync(id, request);
-        return NoContent();
+        var existing = await _sellerService.GetByIdAsync(id);
+        if (existing is null)
+            return NotFound();
+
+        if (!User.IsInRole(Roles.Admin))
+        {
+            if (existing.UserId != User.GetUserId())
+                return Forbid();
+
+            // Commission/status are managed by the platform, not by the seller.
+            request = request with { CommissionRate = existing.CommissionRate };
+        }
+
+        try
+        {
+            await _sellerService.UpdateAsync(id, request);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [Authorize(Roles = Roles.Admin)]

@@ -74,20 +74,20 @@ public record CreateProductRequest(
     string Description,
 
     [param: StringLength(100)]
-    string? Sku,
+    string? Sku = null,
 
-    string? Asin,
-    string? ItemModelNumber,
-    string? Manufacturer,
-    string? CountryOfOrigin,
-    string? ProductDimensions,
-    string? ItemWeight,
-    string? WarrantyInfo,
-    string? Features,
-    string? Binding,
-    string? ReleaseDate,
-    string? ImageUrl,
-    List<string>? Images
+    string? Asin = null,
+    string? ItemModelNumber = null,
+    string? Manufacturer = null,
+    string? CountryOfOrigin = null,
+    string? ProductDimensions = null,
+    string? ItemWeight = null,
+    string? WarrantyInfo = null,
+    string? Features = null,
+    string? Binding = null,
+    string? ReleaseDate = null,
+    string? ImageUrl = null,
+    List<string>? Images = null
 );
 
 public record CreateCartItemRequest(
@@ -186,4 +186,10 @@ public record VoteRequest(
 
     [param: Range(-1, 1)]
     short Value
+);
+
+public record UpdateAnswerRequest(
+    [param: Required]
+    [param: StringLength(2000, MinimumLength = 2)]
+    string Content
 );

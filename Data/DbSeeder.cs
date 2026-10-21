@@ -6,6 +6,10 @@ namespace CloneAmazonBack.Data;
 
 public static class DbSeeder
 {
+    /// <summary>
+    /// Creates the built-in roles and the admin account configured through
+    /// <c>Admin:Email</c> / <c>Admin:Password</c>. Safe to call on every startup.
+    /// </summary>
     public static async Task SeedRolesAsync(AppDbContext context, IConfiguration configuration)
     {
         var roleNames = new[] { Roles.Admin, Roles.Seller, Roles.User };
@@ -30,7 +34,15 @@ public static class DbSeeder
         await context.SaveChangesAsync();
 
         await SeedDefaultAdminAsync(context, configuration);
-        await SeedCategoriesAndSellersAsync(context);
+    }
+
+    /// <summary>
+    /// Development-only demo catalog. Never call this against a production database.
+    /// </summary>
+    public static async Task SeedDemoDataAsync(AppDbContext context)
+    {
+        await SeedCategoriesAsync(context);
+        await SeedDemoSellerAsync(context);
         await SeedProductsAsync(context);
     }
 
@@ -44,7 +56,7 @@ public static class DbSeeder
         if (seller == null || category == null) return;
 
         var products = new List<Product>();
-        for (int i = 1; i <= 20; i++)
+        for (var i = 1; i <= 20; i++)
         {
             products.Add(new Product
             {
@@ -69,20 +81,6 @@ public static class DbSeeder
 
     private static async Task SeedDefaultAdminAsync(AppDbContext context, IConfiguration configuration)
     {
-        // Временно даем права админа пользователю по ID
-        var myUserId = Guid.Parse("c2aa3bf8-4020-4831-bd61-56da3689dc12");
-        var myUser = await context.Users.FindAsync(myUserId);
-        
-        if (myUser != null)
-        {
-            var adminRole = await context.UserRoles.FirstOrDefaultAsync(r => r.Name == Roles.Admin);
-            if (adminRole != null)
-            {
-                myUser.UserRoleId = adminRole.Id;
-                await context.SaveChangesAsync();
-            }
-        }
-
         var adminEmail = configuration["Admin:Email"];
         var adminPassword = configuration["Admin:Password"];
 
@@ -92,10 +90,10 @@ public static class DbSeeder
         if (await context.Users.AnyAsync(u => u.Email == adminEmail))
             return;
 
-        var defaultAdminRole = await context.UserRoles
+        var adminRole = await context.UserRoles
             .FirstOrDefaultAsync(r => r.Name == Roles.Admin);
 
-        if (defaultAdminRole is null)
+        if (adminRole is null)
             return;
 
         context.Users.Add(new User
@@ -106,18 +104,20 @@ public static class DbSeeder
             FirstName = "Admin",
             LastName = "Admin",
             IsActive = true,
-            UserRoleId = defaultAdminRole.Id
+            EmailConfirmed = true,
+            UserRoleId = adminRole.Id
         });
 
         await context.SaveChangesAsync();
     }
 
-    private static async Task SeedCategoriesAndSellersAsync(AppDbContext context)
+    private static async Task SeedCategoriesAsync(AppDbContext context)
     {
-        // 1. Seed Categories if empty
-        if (!await context.Categories.AnyAsync())
-        {
-            var cat1 = new Category
+        if (await context.Categories.AnyAsync())
+            return;
+
+        context.Categories.AddRange(
+            new Category
             {
                 Id = Guid.Parse("e1b10000-0000-0000-0000-000000000001"),
                 Name = "Electronics",
@@ -125,8 +125,8 @@ public static class DbSeeder
                 Path = "Electronics",
                 SortOrder = 1,
                 IsActive = true
-            };
-            var cat2 = new Category
+            },
+            new Category
             {
                 Id = Guid.Parse("e1b10000-0000-0000-0000-000000000002"),
                 Name = "Home & Kitchen",
@@ -134,8 +134,8 @@ public static class DbSeeder
                 Path = "Home & Kitchen",
                 SortOrder = 2,
                 IsActive = true
-            };
-            var cat3 = new Category
+            },
+            new Category
             {
                 Id = Guid.Parse("e1b10000-0000-0000-0000-000000000003"),
                 Name = "Footwear & Sports",
@@ -143,35 +143,47 @@ public static class DbSeeder
                 Path = "Footwear & Sports",
                 SortOrder = 3,
                 IsActive = true
-            };
+            });
 
-            context.Categories.AddRange(cat1, cat2, cat3);
-            await context.SaveChangesAsync();
-        }
+        await context.SaveChangesAsync();
+    }
 
-        // 2. Seed Seller if user c2aa3bf8-4020-4831-bd61-56da3689dc12 exists and seller doesn't exist
-        var myUserId = Guid.Parse("c2aa3bf8-4020-4831-bd61-56da3689dc12");
-        var myUser = await context.Users.FindAsync(myUserId);
-        if (myUser != null)
+    private static async Task SeedDemoSellerAsync(AppDbContext context)
+    {
+        if (await context.Sellers.AnyAsync())
+            return;
+
+        var sellerRole = await context.UserRoles
+            .FirstOrDefaultAsync(r => r.Name == Roles.Seller);
+
+        if (sellerRole is null)
+            return;
+
+        var demoUserId = Guid.NewGuid();
+        context.Users.Add(new User
         {
-            var sellerExists = await context.Sellers.AnyAsync(s => s.UserId == myUserId);
-            if (!sellerExists)
-            {
-                var seller = new Seller
-                {
-                    Id = Guid.Parse("e1b10000-0000-0000-0000-000000000010"),
-                    UserId = myUserId,
-                    StoreName = "Treemiix Official Store",
-                    StoreSlug = "treemiix-official",
-                    Rating = 5.0m,
-                    Status = SellerStatus.Active,
-                    CommissionRate = 0.10m,
-                    CreatedAt = DateTime.UtcNow
-                };
+            Id = demoUserId,
+            Email = "demo-seller@treemiix.local",
+            Password = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
+            FirstName = "Demo",
+            LastName = "Seller",
+            IsActive = true,
+            EmailConfirmed = true,
+            UserRoleId = sellerRole.Id
+        });
 
-                context.Sellers.Add(seller);
-                await context.SaveChangesAsync();
-            }
-        }
+        context.Sellers.Add(new Seller
+        {
+            Id = Guid.NewGuid(),
+            UserId = demoUserId,
+            StoreName = "Treemiix Official Store",
+            StoreSlug = "treemiix-official",
+            Rating = 5.0m,
+            Status = SellerStatus.Active,
+            CommissionRate = 0.10m,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await context.SaveChangesAsync();
     }
 }

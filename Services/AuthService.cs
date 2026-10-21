@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -88,6 +89,26 @@ public class AuthService : IAuthService
             "User {Email} was registered successfully. Id: {UserId}",
             user.Email,
             user.Id);
+
+        // When email confirmation is required the user must not receive a usable
+        // JWT before confirming the address.
+        if (requireEmailConfirmation && !user.EmailConfirmed)
+        {
+            return new AuthResponse
+            {
+                Token = string.Empty,
+                ExpiresAt = default,
+                EmailConfirmationRequired = true,
+                User = new UserInfo
+                {
+                    Id = user.Id,
+                    Email = user.Email,
+                    FirstName = user.FirstName,
+                    LastName = user.LastName,
+                    Role = role.Name
+                }
+            };
+        }
 
         return GenerateAuthResponse(
             user.Id,
@@ -241,7 +262,10 @@ public class AuthService : IAuthService
 
     private static string GenerateConfirmationCode()
     {
-        return Random.Shared.Next(100000, 1000000).ToString();
+        // Cryptographically secure 6-digit code.
+        return System.Security.Cryptography.RandomNumberGenerator
+            .GetInt32(100000, 1000000)
+            .ToString(CultureInfo.InvariantCulture);
     }
 
     private AuthResponse GenerateAuthResponse(

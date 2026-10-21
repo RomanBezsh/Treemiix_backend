@@ -35,7 +35,6 @@ public class GiftCardsController : ControllerBase
         return Ok(card);
     }
 
-    [AllowAnonymous]
     [HttpGet("code/{code}")]
     public async Task<IActionResult> GetByCode(string code)
     {

@@ -5,3 +5,9 @@ obj/
 appsettings.json
 appsettings.Development.json
 .vs/
+logs/
+wwwroot/media/
+wwwroot/uploads/
+*.db
+*.db-shm
+*.db-wal

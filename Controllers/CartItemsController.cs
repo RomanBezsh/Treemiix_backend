@@ -49,9 +49,17 @@ public class CartItemsController : ControllerBase
     public async Task<IActionResult> UpdateQuantity(Guid id, int quantity)
     {
         var userId = User.GetUserId();
-        var updated = await _cartItemService.UpdateQuantityAsync(id, quantity, userId);
-        if (!updated) return NotFound();
-        return NoContent();
+
+        try
+        {
+            var updated = await _cartItemService.UpdateQuantityAsync(id, quantity, userId);
+            if (!updated) return NotFound();
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]

@@ -28,7 +28,7 @@ public class Product
     public string? ProductDimensions { get; set; }
     public string? ItemWeight { get; set; }
     public string? WarrantyInfo { get; set; }
-    public string? Features { get; set; } // Можно хранить как JSON-строку
+    public string? Features { get; set; } // Список особенностей в виде JSON-строки
     public string? Binding { get; set; }
     public string? ReleaseDate { get; set; }
 
@@ -88,7 +88,7 @@ public class ProductReview
     public string Text { get; set; } = string.Empty;
     public int Rating { get; set; }
     public DateTime CreatedAt { get; set; }
-    public string? MediaPaths { get; set; } // JSON-массив путей к медиафайлам в wwwroot/media
+    public string? MediaPaths { get; set; } // JSON-список путей к медиафайлам в wwwroot/media
 
     public User User { get; set; } = null!;
     public Product Product { get; set; } = null!;

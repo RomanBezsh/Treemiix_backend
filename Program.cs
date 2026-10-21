@@ -199,7 +199,15 @@ try
     builder.Services.AddSwaggerGen();
 
     // IHttpClientFactory is required by UploadController (SSRF-safe media import).
-    builder.Services.AddHttpClient();
+    builder.Services.AddHttpClient("media-import", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            // Redirects could be used to bypass the SSRF host check.
+            AllowAutoRedirect = false
+        });
 
     // Allow large media uploads (the controller enforces its own per-file limit).
     builder.Services.Configure<FormOptions>(options =>

@@ -8,6 +8,6 @@ public interface ICartService
     Task<Cart?> GetByIdAsync(Guid id, Guid userId);
     Task<bool> UserHasCartAsync(Guid userId);
     Task<Cart> CreateAsync(Guid userId);
-    Task ApplyPromoCodeAsync(Guid id, Guid? promoCodeId, Guid userId);
+    Task<bool> ApplyPromoCodeAsync(Guid id, Guid? promoCodeId, Guid userId);
     Task DeleteAsync(Guid id, Guid userId);
 }

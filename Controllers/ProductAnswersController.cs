@@ -31,16 +31,25 @@ public class ProductAnswersController : ControllerBase
     public async Task<IActionResult> Create(CreateAnswerRequest request)
     {
         var userId = User.GetUserId();
+
+        // Only sellers/admins may mark an answer as official.
+        if (request.IsOfficialAnswer &&
+            !User.IsInRole(Roles.Admin) &&
+            !User.IsInRole(Roles.Seller))
+        {
+            request = request with { IsOfficialAnswer = false };
+        }
+
         var answer = await _answerService.CreateAsync(userId, request);
         return Created($"/api/productanswers/byquestion/{answer.QuestionId}", answer);
     }
 
     [HttpPut("{id}")]
-    public async Task<IActionResult> Update(Guid id, string content)
+    public async Task<IActionResult> Update(Guid id, UpdateAnswerRequest request)
     {
         var userId = User.GetUserId();
         var isAdmin = User.IsInRole(Roles.Admin);
-        var updated = await _answerService.UpdateAsync(id, content, userId, isAdmin);
+        var updated = await _answerService.UpdateAsync(id, request.Content, userId, isAdmin);
         if (!updated) return NotFound();
         return NoContent();
     }

@@ -32,6 +32,12 @@ public class SellerService : ISellerService
 
     public async Task<Seller> CreateAsync(Guid userId, CreateSellerRequest request)
     {
+        if (await _context.Sellers.AnyAsync(s => s.UserId == userId))
+            throw new InvalidOperationException("A store already exists for this user");
+
+        if (await _context.Sellers.AnyAsync(s => s.StoreSlug == request.StoreSlug))
+            throw new InvalidOperationException("This store slug is already taken");
+
         var seller = new Seller
         {
             Id = Guid.NewGuid(),
@@ -59,6 +65,9 @@ public class SellerService : ISellerService
         var seller = await _context.Sellers.FindAsync(id);
         if (seller == null)
             return;
+
+        if (await _context.Sellers.AnyAsync(s => s.Id != id && s.StoreSlug == request.StoreSlug))
+            throw new InvalidOperationException("This store slug is already taken");
 
         seller.StoreName = request.StoreName;
         seller.StoreSlug = request.StoreSlug;

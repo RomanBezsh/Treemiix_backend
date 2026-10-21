@@ -60,6 +60,9 @@ public class UserRoleService : IUserRoleService
         if (role == null)
             return false;
 
+        if (await _context.Users.AnyAsync(u => u.UserRoleId == id))
+            throw new InvalidOperationException("Cannot delete a role that is assigned to users");
+
         _context.UserRoles.Remove(role);
         await _context.SaveChangesAsync();
 

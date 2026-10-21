@@ -37,6 +37,16 @@ public class ProductReviewService : IProductReviewService
 
     public async Task<ProductReview> CreateAsync(Guid userId, CreateReviewRequest request)
     {
+        var productExists = await _context.Products.AnyAsync(p => p.Id == request.ProductId);
+        if (!productExists)
+            throw new InvalidOperationException("Product not found");
+
+        var alreadyReviewed = await _context.ProductReviews
+            .AnyAsync(r => r.ProductId == request.ProductId && r.UserId == userId);
+
+        if (alreadyReviewed)
+            throw new InvalidOperationException("You have already reviewed this product");
+
         var review = new ProductReview
         {
             Id = Guid.NewGuid(),

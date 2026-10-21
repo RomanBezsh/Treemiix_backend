@@ -51,15 +51,30 @@ public class CartService : ICartService
         return await _context.Carts.AnyAsync(c => c.UserId == userId);
     }
 
-    public async Task ApplyPromoCodeAsync(Guid id, Guid? promoCodeId, Guid userId)
+    public async Task<bool> ApplyPromoCodeAsync(Guid id, Guid? promoCodeId, Guid userId)
     {
         var cart = await _context.Carts
             .FirstOrDefaultAsync(c => c.Id == id && c.UserId == userId);
         if (cart == null)
-            return;
+            return false;
+
+        if (promoCodeId.HasValue)
+        {
+            var now = DateTime.UtcNow;
+            var promoIsValid = await _context.PromoCodes.AnyAsync(p =>
+                p.Id == promoCodeId.Value &&
+                p.IsActive &&
+                p.StartsAt <= now &&
+                p.ExpiresAt >= now);
+
+            if (!promoIsValid)
+                return false;
+        }
 
         cart.PromoCodeId = promoCodeId;
         await _context.SaveChangesAsync();
+
+        return true;
     }
 
     public async Task DeleteAsync(Guid id, Guid userId)
