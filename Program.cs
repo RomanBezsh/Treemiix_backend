@@ -67,8 +67,12 @@ try
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(connectionString, npgsql => npgsql.EnableRetryOnFailure(3)));
 
-    // CORS - restricted origins from configuration
-    var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? ["http://localhost:3000", "http://localhost:5173"];
+    // CORS - restricted origins from configuration. The deployed frontend is part of the
+    // fallback list so a missing/typoed Cors:AllowedOrigins value cannot break the SPA.
+    var configuredCorsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+    var corsOrigins = configuredCorsOrigins is { Length: > 0 }
+        ? configuredCorsOrigins
+        : ["http://localhost:3000", "http://localhost:5173", "https://treemiix.vercel.app"];
     builder.Services.AddCors(options =>
     {
         options.AddDefaultPolicy(policy =>
@@ -107,6 +111,52 @@ try
     {
         // Null cache service when Redis is disabled
         builder.Services.AddScoped<ICacheService, NullCacheService>();
+    }
+
+    // Email delivery (confirmation codes and password reset).
+    var emailOptions = builder.Configuration.GetSection("Email").Get<EmailOptions>() ?? new EmailOptions();
+    builder.Services.Configure<EmailOptions>(builder.Configuration.GetSection("Email"));
+    builder.Services.AddHttpClient("email", client => client.Timeout = TimeSpan.FromSeconds(30));
+
+    var useResend = string.Equals(
+        emailOptions.Provider,
+        "Resend",
+        StringComparison.OrdinalIgnoreCase);
+
+    var emailConfigured =
+        emailOptions.Enabled &&
+        !string.IsNullOrWhiteSpace(emailOptions.FromAddress) &&
+        (useResend
+            ? !string.IsNullOrWhiteSpace(emailOptions.ApiKey)
+            : !string.IsNullOrWhiteSpace(emailOptions.Host));
+
+    if (emailConfigured)
+    {
+        if (useResend)
+            builder.Services.AddScoped<IEmailSender, ResendEmailSender>();
+        else
+            builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+    }
+    else if (builder.Environment.IsDevelopment())
+    {
+        builder.Services.AddScoped<IEmailSender, LoggingEmailSender>();
+    }
+    else
+    {
+        builder.Services.AddScoped<IEmailSender, UnconfiguredEmailSender>();
+
+        if (!builder.Environment.IsDevelopment())
+        {
+            Log.Warning(
+                "Email delivery is not configured. Email confirmation and password reset emails will not be sent.");
+        }
+    }
+
+    if (builder.Configuration.GetValue("Auth:RequireEmailConfirmation", false) && !emailConfigured)
+    {
+        throw new InvalidOperationException(
+            "Auth:RequireEmailConfirmation is enabled but Email:* is not configured. " +
+            "Users would not be able to confirm their email.");
     }
 
     // Security: Validate JWT key length at startup
@@ -232,6 +282,12 @@ try
 
     var app = builder.Build();
 
+    // Make configuration problems visible in the very first log lines.
+    app.Logger.LogInformation(
+        "Environment: {Environment}; CORS allowed origins: {Origins}",
+        app.Environment.EnvironmentName,
+        string.Join(", ", corsOrigins));
+
     // Serilog request logging (adds correlation ID, timing, etc.)
     app.UseSerilogRequestLogging(options =>
     {
@@ -307,6 +363,8 @@ try
     app.MapControllers();
 
     // Health checks endpoints
+    // PaaS health checks (Render included) probe "/" by default; answer 200 instead of 404.
+    app.MapGet("/", () => Results.Ok(new { service = "CloneAmazonBack", status = "ok" }));
     app.MapHealthChecks("/health");
     app.MapHealthChecks("/health/ready", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
