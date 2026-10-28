@@ -123,7 +123,9 @@ Email__ApiKey=...
 Email__FromAddress=no-reply@your-domain.com
 ```
 
-`Database__MigrateOnStartup=true` применяет миграции до старта обработки запросов. Если оставить `false`, примените миграции вручную **до** деплоя новой версии:
+`Database__MigrateOnStartup` по умолчанию включён: при старте приложение применяет все ожидающие миграции
+и пишет в лог `Database migrations applied`. Отключить можно через `Database__MigrateOnStartup=false` —
+тогда миграции нужно применять вручную **до** деплоя новой версии:
 
 ```bash
 dotnet ef database update
@@ -156,8 +158,11 @@ dotnet test CloneAmazonBack.Tests/CloneAmazonBack.Tests.csproj
 - импорт по URL защищён от SSRF (запрещены loopback/private/link-local хосты);
 - эндпоинты `POST /api/upload` и `POST /api/upload/media` требуют авторизации.
 
-Таблица создаётся миграцией `AddMediaStorage`; на деплое примените её
-(`dotnet ef database update` или `Database__MigrateOnStartup=true`).
+Таблица создаётся миграцией `AddMediaStorage`. Она применяется автоматически при старте
+(`Database:MigrateOnStartup` включён по умолчанию), вручную — `dotnet ef database update`.
+
+Ссылки на изображения, загруженные до перехода на БД, будут отдавать 404, пока файлы не перезальют
+через админку.
 
 ## Health checks
 

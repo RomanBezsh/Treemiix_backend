@@ -391,9 +391,16 @@ try
         var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var configuration = scope.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        if (configuration.GetValue("Database:MigrateOnStartup", false))
+        var migrateOnStartup = configuration.GetValue("Database:MigrateOnStartup", true);
+        Log.Information("Database: MigrateOnStartup={MigrateOnStartup}", migrateOnStartup);
+
+        if (migrateOnStartup)
         {
+            // Environment variables on Render were not reliably applied, so pending
+            // migrations are applied on boot by default. Set Database__MigrateOnStartup=false
+            // to disable.
             await dbContext.Database.MigrateAsync();
+            Log.Information("Database migrations applied");
         }
 
         await DbSeeder.SeedRolesAsync(dbContext, configuration);
