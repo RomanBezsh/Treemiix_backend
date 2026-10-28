@@ -206,14 +206,24 @@ try
         });
 
         options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(
-            httpContext => RateLimitPartition.GetFixedWindowLimiter(
-                partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
-                factory: _ => new FixedWindowRateLimiterOptions
-                {
-                    PermitLimit = globalPermitLimit,
-                    Window = TimeSpan.FromSeconds(globalWindowSeconds),
-                    QueueLimit = 0
-                }));
+            httpContext =>
+            {
+                // Media responses are immutable and cached by the browser / image optimizer,
+                // and a single catalog page can legitimately request hundreds of them.
+                // A shared 100/min bucket would turn images into 429s, so they are not limited.
+                if (httpContext.Request.Path.StartsWithSegments("/media") ||
+                    httpContext.Request.Path.StartsWithSegments("/uploads"))
+                    return RateLimitPartition.GetNoLimiter("media");
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+                    factory: _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = globalPermitLimit,
+                        Window = TimeSpan.FromSeconds(globalWindowSeconds),
+                        QueueLimit = 0
+                    });
+            });
     });
 
     builder.Services.AddScoped<IAuthService, AuthService>();
@@ -259,10 +269,11 @@ try
             AllowAutoRedirect = false
         });
 
-    // Allow large media uploads (the controller enforces its own per-file limit).
+    // Media is stored in PostgreSQL, so the request body limit matches the 5 MB
+    // per-file cap enforced by UploadController (fail fast instead of buffering 200 MB).
     builder.Services.Configure<FormOptions>(options =>
     {
-        options.MultipartBodyLengthLimit = 210L * 1024 * 1024;
+        options.MultipartBodyLengthLimit = 6L * 1024 * 1024;
     });
 
     // API Versioning (version is optional; sent via the "api-version" header

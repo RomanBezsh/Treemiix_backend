@@ -176,6 +176,40 @@ namespace CloneAmazonBack.Migrations
                     b.ToTable("HistoryPriceProducts");
                 });
 
+            modelBuilder.Entity("CloneAmazonBack.Models.MediaFile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<byte[]>("Bytes")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FileName")
+                        .IsUnique();
+
+                    b.ToTable("MediaFiles");
+                });
+
             modelBuilder.Entity("CloneAmazonBack.Models.Order", b =>
                 {
                     b.Property<Guid>("Id")

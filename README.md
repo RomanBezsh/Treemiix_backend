@@ -144,8 +144,20 @@ dotnet test CloneAmazonBack.Tests/CloneAmazonBack.Tests.csproj
 
 ## Медиа
 
-Загруженные файлы сохраняются в `wwwroot/media` и `wwwroot/uploads` и раздаются статикой по `/media/...` и `/uploads/...`.
-Поддерживаются только изображения и видео из allowlist, лимит — 200 МБ, импорт по URL защищён от SSRF.
+Загруженные изображения хранятся в PostgreSQL, в таблице `MediaFiles` (колонка `Bytes` типа `bytea`),
+и раздаются контроллером по `/media/{fileName}` и `/uploads/{fileName}`.
+
+Почему в БД, а не на диск: файловая система контейнера на Render (и большинстве PaaS) эфемерная —
+всё, что записано в `wwwroot`, исчезает при каждом деплое или рестарте.
+
+- только изображения (`jpg`, `jpeg`, `png`, `gif`, `webp`, `bmp`), видео не поддерживается;
+- лимит файла — 5 МБ (`UploadController.MaxImageBytes`, `FormOptions.MultipartBodyLengthLimit` — 6 МБ);
+- имена — случайные GUID, поэтому отдача идёт с `Cache-Control: public, max-age=31536000, immutable` и `ETag`;
+- импорт по URL защищён от SSRF (запрещены loopback/private/link-local хосты);
+- эндпоинты `POST /api/upload` и `POST /api/upload/media` требуют авторизации.
+
+Таблица создаётся миграцией `AddMediaStorage`; на деплое примените её
+(`dotnet ef database update` или `Database__MigrateOnStartup=true`).
 
 ## Health checks
 

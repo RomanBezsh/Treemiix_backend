@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<QuestionVote> QuestionVotes => Set<QuestionVote>();
     public DbSet<HistoryPriceProduct> HistoryPriceProducts => Set<HistoryPriceProduct>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+    public DbSet<MediaFile> MediaFiles => Set<MediaFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -313,6 +314,14 @@ public class AppDbContext : DbContext
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<MediaFile>(entity =>
+        {
+            entity.HasIndex(m => m.FileName).IsUnique();
+            entity.Property(m => m.FileName).HasMaxLength(128);
+            entity.Property(m => m.ContentType).HasMaxLength(128);
+            entity.Property(m => m.Bytes).IsRequired();
         });
     }
 }

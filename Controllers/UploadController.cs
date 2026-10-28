@@ -1,7 +1,10 @@
-using System.Net;
+﻿using System.Net;
 using System.Net.Sockets;
+using CloneAmazonBack.Data;
+using CloneAmazonBack.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CloneAmazonBack.Controllers;
 
@@ -9,28 +12,73 @@ namespace CloneAmazonBack.Controllers;
 [Route("api/[controller]")]
 public class UploadController : ControllerBase
 {
-    private const long MaxFileBytes = 200L * 1024 * 1024;
+    /// <summary>
+    /// Media is stored in PostgreSQL, so per-file size is kept small on purpose.
+    /// </summary>
+    private const long MaxImageBytes = 5L * 1024 * 1024;
 
-    private static readonly string[] AllowedMediaExtensions =
+    private const string TooLargeMessage = "File is too large (max 5 MB)";
+
+    private static readonly Dictionary<string, string> ImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
+        [".jpg"] = "image/jpeg",
+        [".jpeg"] = "image/jpeg",
+        [".png"] = "image/png",
+        [".gif"] = "image/gif",
+        [".webp"] = "image/webp",
+        [".bmp"] = "image/bmp"
+    };
+
+    private static readonly string[] VideoExtensions =
+    {
         ".mp4", ".webm", ".mov", ".avi"
     };
 
-    private readonly IWebHostEnvironment _env;
+    private readonly AppDbContext _context;
     private readonly IHttpClientFactory _httpClientFactory;
 
-    public UploadController(IWebHostEnvironment env, IHttpClientFactory httpClientFactory)
+    public UploadController(AppDbContext context, IHttpClientFactory httpClientFactory)
     {
-        _env = env;
+        _context = context;
         _httpClientFactory = httpClientFactory;
     }
 
     public record ImportMediaRequest(string Url);
 
+    /// <summary>Serves media stored in the database. Both URL shapes are kept for compatibility.</summary>
+    [HttpGet("/media/{fileName}")]
+    [HttpGet("/uploads/{fileName}")]
+    [HttpHead("/media/{fileName}")]
+    [HttpHead("/uploads/{fileName}")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetMedia(string fileName, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(fileName) || fileName.Length > 128)
+            return NotFound();
+
+        var media = await _context.MediaFiles
+            .AsNoTracking()
+            .Where(m => m.FileName == fileName)
+            .Select(m => new { m.Id, m.ContentType, m.Bytes })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (media is null)
+            return NotFound();
+
+        // Files are immutable (the name is a fresh GUID), so clients may cache forever.
+        var etag = $"\"{media.Id}\"";
+        Response.Headers.ETag = etag;
+        Response.Headers.CacheControl = "public, max-age=31536000, immutable";
+
+        if (Request.Headers["If-None-Match"] == etag)
+            return StatusCode(StatusCodes.Status304NotModified);
+
+        return File(media.Bytes, media.ContentType);
+    }
+
     [HttpPost("import")]
     [Authorize]
-    [RequestSizeLimit(MaxFileBytes)]
+    [RequestSizeLimit(MaxImageBytes + 1024 * 1024)]
     public async Task<IActionResult> ImportFromUrl([FromBody] ImportMediaRequest request)
     {
         if (string.IsNullOrWhiteSpace(request?.Url))
@@ -41,7 +89,11 @@ public class UploadController : ControllerBase
             return BadRequest("Only http(s) URLs are allowed");
 
         var extension = Path.GetExtension(uri.AbsolutePath).ToLowerInvariant();
-        if (string.IsNullOrEmpty(extension) || !AllowedMediaExtensions.Contains(extension))
+
+        if (VideoExtensions.Contains(extension))
+            return BadRequest("Video uploads are not supported: media is stored in the database");
+
+        if (!ImageContentTypes.ContainsKey(extension))
             return BadRequest($"File type '{extension}' is not allowed");
 
         // Basic SSRF protection: never fetch loopback/private/link-local hosts.
@@ -56,27 +108,17 @@ public class UploadController : ControllerBase
             if (!response.IsSuccessStatusCode)
                 return BadRequest($"Unable to download the file (HTTP {(int)response.StatusCode})");
 
-            if (response.Content.Headers.ContentLength is long length && length > MaxFileBytes)
-                return BadRequest("File is too large (max 200 MB)");
+            if (response.Content.Headers.ContentLength is long length && length > MaxImageBytes)
+                return BadRequest(TooLargeMessage);
 
-            var uploadPath = Path.Combine(GetWebRootPath(), "media");
-            Directory.CreateDirectory(uploadPath);
-
-            var fileName = Guid.NewGuid().ToString("N") + extension;
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            var copied = await CopyWithLimitAsync(
+            var bytes = await ReadWithLimitAsync(
                 await response.Content.ReadAsStreamAsync(),
-                filePath,
-                MaxFileBytes);
+                MaxImageBytes);
 
-            if (!copied)
-            {
-                System.IO.File.Delete(filePath);
-                return BadRequest("File is too large (max 200 MB)");
-            }
+            if (bytes is null)
+                return BadRequest(TooLargeMessage);
 
-            return Ok(new { path = $"/media/{fileName}" });
+            return await StoreAsync(bytes, extension, "media");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
         {
@@ -87,65 +129,72 @@ public class UploadController : ControllerBase
     /// <summary>Legacy endpoint kept for backwards compatibility.</summary>
     [HttpPost]
     [Authorize]
-    [RequestSizeLimit(MaxFileBytes)]
-    public Task<IActionResult> Upload(IFormFile file) => SaveUploadAsync(file, "uploads");
+    [RequestSizeLimit(MaxImageBytes + 1024 * 1024)]
+    public Task<IActionResult> Upload(IFormFile? file) => SaveUploadAsync(file, "uploads");
 
     [HttpPost("media")]
     [Authorize]
-    [RequestSizeLimit(MaxFileBytes)]
-    public Task<IActionResult> UploadMedia(IFormFile file) => SaveUploadAsync(file, "media");
+    [RequestSizeLimit(MaxImageBytes + 1024 * 1024)]
+    public Task<IActionResult> UploadMedia(IFormFile? file) => SaveUploadAsync(file, "media");
 
     private async Task<IActionResult> SaveUploadAsync(IFormFile? file, string folder)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file");
 
-        if (file.Length > MaxFileBytes)
-            return BadRequest("File is too large (max 200 MB)");
+        if (file.Length > MaxImageBytes)
+            return BadRequest(TooLargeMessage);
 
         var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-        if (!AllowedMediaExtensions.Contains(extension))
+
+        if (VideoExtensions.Contains(extension))
+            return BadRequest("Video uploads are not supported: media is stored in the database");
+
+        if (!ImageContentTypes.ContainsKey(extension))
             return BadRequest($"File type '{extension}' is not allowed");
 
-        var uploadPath = Path.Combine(GetWebRootPath(), folder);
-        Directory.CreateDirectory(uploadPath);
+        await using var buffer = new MemoryStream();
+        await file.CopyToAsync(buffer);
 
+        return await StoreAsync(buffer.ToArray(), extension, folder);
+    }
+
+    private async Task<IActionResult> StoreAsync(byte[] bytes, string extension, string folder)
+    {
         var fileName = Guid.NewGuid().ToString("N") + extension;
-        var filePath = Path.Combine(uploadPath, fileName);
 
-        await using (var stream = new FileStream(filePath, FileMode.CreateNew))
+        _context.MediaFiles.Add(new MediaFile
         {
-            await file.CopyToAsync(stream);
-        }
+            Id = Guid.NewGuid(),
+            FileName = fileName,
+            ContentType = ImageContentTypes[extension],
+            Size = bytes.LongLength,
+            Bytes = bytes,
+            CreatedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
 
         return Ok(new { path = $"/{folder}/{fileName}" });
     }
 
-    private string GetWebRootPath()
+    private static async Task<byte[]?> ReadWithLimitAsync(Stream source, long maxBytes)
     {
-        if (!string.IsNullOrWhiteSpace(_env.WebRootPath))
-            return _env.WebRootPath;
-
-        return Path.Combine(_env.ContentRootPath, "wwwroot");
-    }
-
-    private static async Task<bool> CopyWithLimitAsync(Stream source, string destination, long maxBytes)
-    {
-        await using var target = new FileStream(destination, FileMode.CreateNew);
-        var buffer = new byte[81920];
+        using var buffer = new MemoryStream();
+        var chunk = new byte[81920];
         long total = 0;
         int read;
 
-        while ((read = await source.ReadAsync(buffer)) > 0)
+        while ((read = await source.ReadAsync(chunk)) > 0)
         {
             total += read;
             if (total > maxBytes)
-                return false;
+                return null;
 
-            await target.WriteAsync(buffer.AsMemory(0, read));
+            await buffer.WriteAsync(chunk.AsMemory(0, read));
         }
 
-        return true;
+        return buffer.ToArray();
     }
 
     private static async Task<bool> IsPublicHostAsync(string host)
