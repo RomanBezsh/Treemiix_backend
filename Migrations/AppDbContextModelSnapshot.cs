@@ -647,6 +647,41 @@ namespace CloneAmazonBack.Migrations
                     b.ToTable("QuestionVotes");
                 });
 
+            modelBuilder.Entity("CloneAmazonBack.Models.RefreshToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReplacedByTokenHash")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId", "ExpiresAt");
+
+                    b.ToTable("RefreshTokens");
+                });
+
             modelBuilder.Entity("CloneAmazonBack.Models.Seller", b =>
                 {
                     b.Property<Guid>("Id")
@@ -721,6 +756,9 @@ namespace CloneAmazonBack.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<int>("FailedLoginAttempts")
+                        .HasColumnType("integer");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -732,9 +770,18 @@ namespace CloneAmazonBack.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<DateTime?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("PasswordResetCode")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PasswordResetCodeExpiresAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserRoleId")
                         .HasColumnType("uuid");
@@ -1105,6 +1152,17 @@ namespace CloneAmazonBack.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("CloneAmazonBack.Models.RefreshToken", b =>
+                {
+                    b.HasOne("CloneAmazonBack.Models.User", "User")
+                        .WithMany("RefreshTokens")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("CloneAmazonBack.Models.Seller", b =>
                 {
                     b.HasOne("CloneAmazonBack.Models.User", "User")
@@ -1239,6 +1297,8 @@ namespace CloneAmazonBack.Migrations
                     b.Navigation("QuestionVotes");
 
                     b.Navigation("Questions");
+
+                    b.Navigation("RefreshTokens");
 
                     b.Navigation("Reviews");
 

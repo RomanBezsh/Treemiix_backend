@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<ProductAnswer> ProductAnswers => Set<ProductAnswer>();
     public DbSet<QuestionVote> QuestionVotes => Set<QuestionVote>();
     public DbSet<HistoryPriceProduct> HistoryPriceProducts => Set<HistoryPriceProduct>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -300,6 +301,17 @@ public class AppDbContext : DbContext
             entity.HasOne(h => h.Product)
                 .WithMany(p => p.PriceHistory)
                 .HasForeignKey(h => h.ProductId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<RefreshToken>(entity =>
+        {
+            entity.HasIndex(t => t.TokenHash).IsUnique();
+            entity.HasIndex(t => new { t.UserId, t.ExpiresAt });
+
+            entity.HasOne(t => t.User)
+                .WithMany(u => u.RefreshTokens)
+                .HasForeignKey(t => t.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         });
     }

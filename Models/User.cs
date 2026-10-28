@@ -21,6 +21,18 @@ public class User
     [JsonIgnore]
     public DateTime? EmailConfirmationCodeExpiresAt { get; set; }
 
+    [JsonIgnore]
+    public int FailedLoginAttempts { get; set; }
+
+    [JsonIgnore]
+    public DateTime? LockoutEnd { get; set; }
+
+    [JsonIgnore]
+    public string? PasswordResetCode { get; set; }
+
+    [JsonIgnore]
+    public DateTime? PasswordResetCodeExpiresAt { get; set; }
+
     public Guid UserRoleId { get; set; }
 
     public UserRole UserRole { get; set; } = null!;
@@ -36,6 +48,7 @@ public class User
     public ICollection<QuestionVote> QuestionVotes { get; set; } = new List<QuestionVote>();
     public ICollection<GiftCard> PurchasedGiftCards { get; set; } = new List<GiftCard>();
     public ICollection<GiftCard> ActivatedGiftCards { get; set; } = new List<GiftCard>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
 
 public class UserAddress

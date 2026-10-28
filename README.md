@@ -1,83 +1,154 @@
-# CloneAmazonBack
+# Treemiix Backend
 
-Бэкенд клона Amazon на ASP.NET Core 9 + EF Core 9 + PostgreSQL (Npgsql). JWT, роли, rate limiting, логирование.
+Маркетплейс-бэкенд на ASP.NET Core 9 + EF Core 9 + PostgreSQL. JWT, refresh-токены, роли, rate limiting, загрузка медиа, health checks.
 
-## Запуск локально
+## Требования
 
-### Нужно
 - .NET SDK 9.0
-- PostgreSQL (подойдёт и Neon)
+- PostgreSQL (локально, Neon, Supabase и т.д.)
+- Redis — опционально
 
-### Настройка
-Задай переменные окружения (или пропиши в `appsettings.json`). Секреты в репозиторий не пушим.
+## Локальный запуск
 
-| Переменная | Что это |
+1. Скопируйте пример конфигурации:
+
+```bash
+cp appsettings.example.json appsettings.Development.json
+```
+
+2. Заполните в `appsettings.Development.json`:
+
+| Ключ | Назначение |
 |---|---|
-| `ConnectionStrings__DefaultConnection` | строка подключения к PostgreSQL |
-| `Jwt__Key` | ключ для подписи JWT, минимум 32 символа |
-| `Jwt__Issuer` | issuer токена, по умолчанию `CloneAmazonBack` |
-| `Jwt__Audience` | audience токена, по умолчанию `CloneAmazonFront` |
-| `Jwt__ExpiryHours` | сколько часов живёт токен, по умолчанию 24 |
-| `Admin__Email` | email первого админа, создаётся автоматом при старте |
-| `Admin__Password` | пароль первого админа |
-| `RateLimiting__AuthPermitLimit` | лимит запросов/мин на `/api/auth`, по умолчанию 10 |
-| `RateLimiting__GlobalPermitLimit` | лимит запросов/мин на всё остальное, по умолчанию 100 |
-| `Auth__RequireEmailConfirmation` | требовать подтверждение почты при регистрации, по умолчанию false |
+| `ConnectionStrings:DefaultConnection` | строка подключения к PostgreSQL |
+| `Jwt:Key` | секрет JWT, минимум 32 символа |
+| `Admin:Email` / `Admin:Password` | учётка администратора (создаётся при старте, если её нет) |
+| `Cors:AllowedOrigins` | адреса фронтенда |
 
-Строка подключения выглядит так:
-```
-Host=localhost;Database=cloneamazon;Username=postgres;Password=secret
-```
+3. Примените миграции:
 
-### Миграции
 ```bash
 dotnet ef database update
 ```
 
-### Запуск
+4. Запустите:
+
 ```bash
 dotnet run
 ```
 
-При старте само создаётся: роли `Admin`, `Seller`, `User` (если их ещё нет) и первый админ из `Admin__Email`/`Admin__Password`, если эти переменные заданы и такого email ещё нет.
+Swagger доступен только в Development: `/swagger`.
 
-### Подтверждение почты
-Если `Auth__RequireEmailConfirmation = true` — после регистрации юзеру приходит 6-значный код, живёт 15 минут:
+## Аккаунты и авторизация
+
+| Метод | Endpoint | Описание |
+|---|---|---|
+| POST | `/api/auth/register` | регистрация |
+| POST | `/api/auth/login` | вход, возвращает access + refresh токены |
+| POST | `/api/auth/refresh` | обмен refresh-токена на новую пару (с ротацией) |
+| POST | `/api/auth/logout` | отзыв refresh-токена (требует access-токен) |
+| POST | `/api/auth/confirm-email` | подтверждение email кодом |
+| POST | `/api/auth/resend-confirmation` | повторная отправка кода |
+| POST | `/api/auth/change-password` | смена пароля (требует access-токен) |
+| POST | `/api/auth/forgot-password` | отправка кода сброса пароля |
+| POST | `/api/auth/reset-password` | сброс пароля по коду |
+
+Ответ `login`/`refresh`:
+
+```json
+{
+  "token": "<access JWT>",
+  "expiresAt": "2026-10-23T10:00:00Z",
+  "refreshToken": "<refresh token>",
+  "refreshTokenExpiresAt": "2026-11-21T10:00:00Z",
+  "emailConfirmationRequired": false,
+  "user": { "id": "...", "email": "...", "firstName": "...", "lastName": "...", "role": "User" }
+}
 ```
-POST /api/auth/confirm-email
-{ "email": "user@example.com", "code": "123456" }
+
+Если включено `Auth:RequireEmailConfirmation`, регистрация возвращает `token` и `refreshToken` пустыми, пока email не подтверждён.
+
+Защита от подбора пароля: после `Auth:MaxFailedLoginAttempts` неудачных попыток аккаунт блокируется на `Auth:LockoutMinutes` минут.
+
+## Отправка писем
+
+Коды подтверждения и сброса пароля отправляются через `IEmailSender`.
+
+### Resend (рекомендуется для Render)
+
+Render часто блокирует исходящий SMTP, поэтому используйте HTTP API:
+
 ```
-Без подтверждения залогиниться нельзя. По умолчанию (`false`) почта считается подтверждённой сразу.
-
-## Тесты
-
-`CloneAmazonBack.Tests` — юнит-тесты на сервисы, гоняются на EF InMemory, реальная БД не нужна.
-
-```bash
-dotnet test
-dotnet test CloneAmazonBack.Tests\CloneAmazonBack.Tests.csproj
+Email__Enabled=true
+Email__Provider=Resend
+Email__ApiKey=re_...
+Email__FromAddress=no-reply@your-domain.com
 ```
 
-Запустить конкретное:
-```bash
-dotnet test --filter "AuthService"          # по имени
-dotnet test --filter "ProductServiceTests"  # один класс
-dotnet test --filter "Name~UpdateAsync"     # по части имени
+### SMTP
+
+```
+Email__Enabled=true
+Email__Provider=Smtp
+Email__Host=smtp.example.com
+Email__Port=587
+Email__UseStartTls=true
+Email__UserName=...
+Email__Password=...
+Email__FromAddress=no-reply@your-domain.com
 ```
 
-## API
+В Development при выключенной почте письма пишутся в лог приложения.
 
-Swagger в Development: `https://localhost:<port>/swagger`
-
-Без токена доступны: регистрация, логин, категории, товары, отзывы, вопросы, ответы, галереи, видео, атрибуты, продавцы, а также промокоды и гифткарты по коду.
-
-Всё остальное — только с JWT (`Authorization: Bearer <token>`). Роли:
-- `Admin` — пользователи, роли, категории, промокоды, статусы продавцов/заказов
-- `Seller` — товары, галереи, видео, атрибуты
-- `User` — корзина, заказы, отзывы, вопросы, адреса, профиль, гифткарты
+> Если `Auth:RequireEmailConfirmation=true`, а почта не настроена, приложение не запустится — иначе пользователи не смогут подтвердить email.
 
 ## Деплой на Render
 
-1. Создаёшь Web Service из репозитория.
-2. Прописываешь переменные окружения из таблицы выше. Обязательны `ConnectionStrings__DefaultConnection` и `Jwt__Key`.
-3. `dotnet ef database update` — вручную или через Build Command при первом деплое.
+1. Web Service из Dockerfile.
+2. Обязательные env-переменные:
+
+```
+ConnectionStrings__DefaultConnection=...
+Jwt__Key=<минимум 32 символа>
+Jwt__Issuer=CloneAmazonBack
+Jwt__Audience=CloneAmazonFront
+Admin__Email=...
+Admin__Password=...
+Cors__AllowedOrigins__0=https://your-frontend.com
+Database__MigrateOnStartup=true
+Database__SeedDemoData=false
+Email__Enabled=true
+Email__Provider=Resend
+Email__ApiKey=...
+Email__FromAddress=no-reply@your-domain.com
+```
+
+`Database__MigrateOnStartup=true` применяет миграции до старта обработки запросов. Если оставить `false`, примените миграции вручную **до** деплоя новой версии:
+
+```bash
+dotnet ef database update
+```
+
+## Тесты
+
+```bash
+dotnet test CloneAmazonBack.Tests/CloneAmazonBack.Tests.csproj
+```
+
+Если установлен только runtime .NET 10, а проект на net9.0:
+
+```powershell
+$env:DOTNET_ROLL_FORWARD="Major"
+dotnet test CloneAmazonBack.Tests/CloneAmazonBack.Tests.csproj
+```
+
+## Медиа
+
+Загруженные файлы сохраняются в `wwwroot/media` и `wwwroot/uploads` и раздаются статикой по `/media/...` и `/uploads/...`.
+Поддерживаются только изображения и видео из allowlist, лимит — 200 МБ, импорт по URL защищён от SSRF.
+
+## Health checks
+
+- `/health` — все проверки
+- `/health/ready` — PostgreSQL и Redis
+- `/health/live` — liveness
