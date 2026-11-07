@@ -14,10 +14,11 @@ public class UploadController : ControllerBase
 {
     /// <summary>
     /// Media is stored in PostgreSQL, so per-file size is kept small on purpose.
+    /// Limit is 500 KB so images fit comfortably in all product containers.
     /// </summary>
-    private const long MaxImageBytes = 5L * 1024 * 1024;
+    private const long MaxImageBytes = 500L * 1024;
 
-    private const string TooLargeMessage = "File is too large (max 5 MB)";
+    private const string TooLargeMessage = "File is too large (max 500 KB)";
 
     private static readonly Dictionary<string, string> ImageContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {

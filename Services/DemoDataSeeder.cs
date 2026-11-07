@@ -43,7 +43,7 @@ public sealed class DemoDataSeeder
     private const string DemoMediaPrefix = "demo-";
     private const string DemoPassword = "Demo123!";
     private const int MaxProducts = 60;
-    private const int MaxImageBytes = 2 * 1024 * 1024;
+    private const int MaxImageBytes = 500 * 1024;
 
     private static readonly SemaphoreSlim SeedGate = new(1, 1);
 

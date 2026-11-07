@@ -282,11 +282,11 @@ try
             AllowAutoRedirect = true
         });
 
-    // Media is stored in PostgreSQL, so the request body limit matches the 5 MB
-    // per-file cap enforced by UploadController (fail fast instead of buffering 200 MB).
+    // Media is stored in PostgreSQL, so the request body limit matches the 500 KB
+    // per-file cap enforced by UploadController (fail fast instead of buffering large bodies).
     builder.Services.Configure<FormOptions>(options =>
     {
-        options.MultipartBodyLengthLimit = 6L * 1024 * 1024;
+        options.MultipartBodyLengthLimit = 2L * 1024 * 1024;
     });
 
     // API Versioning (version is optional; sent via the "api-version" header
