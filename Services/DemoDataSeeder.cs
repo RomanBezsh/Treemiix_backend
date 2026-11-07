@@ -237,6 +237,7 @@ public sealed class DemoDataSeeder
             foreach (var subcategoryName in definition.Subcategories)
             {
                 var subcategorySlug = $"{DemoSlugPrefix}{definition.Slug}-{Slugify(subcategoryName)}";
+                var sortOrder = 1000 + definition.SortOrder * 100 + subSortOrder;
                 if (!existing.TryGetValue(subcategorySlug, out var subcategory))
                 {
                     subcategory = new Category
@@ -246,7 +247,7 @@ public sealed class DemoDataSeeder
                         Name = subcategoryName,
                         Slug = subcategorySlug,
                         Path = $"{category.Name} > {subcategoryName}",
-                        SortOrder = subSortOrder,
+                        SortOrder = sortOrder,
                         IsActive = true
                     };
                     _context.Categories.Add(subcategory);
@@ -257,7 +258,7 @@ public sealed class DemoDataSeeder
                     subcategory.ParentId = category.Id;
                     subcategory.Name = subcategoryName;
                     subcategory.Path = $"{category.Name} > {subcategoryName}";
-                    subcategory.SortOrder = subSortOrder;
+                    subcategory.SortOrder = sortOrder;
                     subcategory.IsActive = true;
                 }
 
