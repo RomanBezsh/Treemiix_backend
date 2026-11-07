@@ -164,6 +164,8 @@ Admin__Password=...
 Cors__AllowedOrigins__0=https://your-frontend.com
 Database__MigrateOnStartup=true
 Database__SeedDemoData=false
+Database__AllowDemoSeed=true
+Database__DemoSeedProductCount=60
 Email__Enabled=true
 Email__Provider=Resend
 Email__ApiKey=...
@@ -177,6 +179,56 @@ Email__FromAddress=no-reply@your-domain.com
 ```bash
 dotnet ef database update
 ```
+
+## Демо-данные
+
+Для быстрого наполнения базы есть админский endpoint:
+
+```http
+POST /api/admin/demo/seed?productCount=60&reset=false
+Authorization: Bearer <admin access token>
+```
+
+Он создаёт (или дополняет) демо-маркетплейс:
+
+- 10 продавцов: 7 `Active`, 1 `Suspended`, 1 `PendingVerification`, 1 `Rejected`;
+- 12 категорий верхнего уровня и 60 подкатегорий;
+- до 60 товаров с галереями, атрибутами, историей цен и брендами;
+- 12 покупателей, профили, адреса и аватары;
+- отзывы, вопросы, ответы и голоса;
+- корзины, заказы, промокоды и подарочные карты;
+- все изображения товаров, логотипы продавцов и аватары хранятся в PostgreSQL
+  в `MediaFiles` и раздаются через `/media/{fileName}`.
+
+Фотографии товаров скачиваются с Unsplash в размере 600×600 (`q=55`, JPEG, обычно 20–70 КБ).
+Если внешний хост недоступен, автоматически создаётся лёгкая SVG-заглушка, поэтому сидинг
+не падает без интернета. Повторный запуск идемпотентен: существующие демо-объекты не дублируются.
+
+`reset=true` удаляет **только** демо-данные: пользователей с email `@demo.treemiix.local`,
+товары с `SKU` на `DEMO-`, продавцов с slug на `demo-`, медиа с именем на `demo-` и
+подкатегории с slug на `demo-`. Реальные товары и пользователи не затрагиваются.
+
+Демо-аккаунты (пароль у всех `Demo123!`):
+
+- продавцы: `seller1@demo.treemiix.local` … `seller10@demo.treemiix.local`;
+- покупатели: `customer1@demo.treemiix.local` … `customer12@demo.treemiix.local`.
+
+Пример вызова из PowerShell:
+
+```powershell
+$login = Invoke-RestMethod -Method Post `
+  -Uri "https://treemiix-backend.onrender.com/api/auth/login" `
+  -ContentType "application/json" `
+  -Body '{"email":"ADMIN_EMAIL","password":"ADMIN_PASSWORD"}'
+
+Invoke-RestMethod -Method Post `
+  -Uri "https://treemiix-backend.onrender.com/api/admin/demo/seed?productCount=60&reset=false" `
+  -Headers @{ Authorization = "Bearer $($login.token)" }
+```
+
+`Database:AllowDemoSeed=false` полностью отключает endpoint (по умолчанию `true`).
+В Development при `Database:SeedDemoData=true` сидинг выполняется автоматически при старте.
+В Production автоматического сидинга нет — только явный вызов админом.
 
 ## Тесты
 

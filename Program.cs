@@ -248,6 +248,7 @@ try
     builder.Services.AddScoped<IProductVideoService, ProductVideoService>();
     builder.Services.AddScoped<IProductAttributeValueService, ProductAttributeValueService>();
     builder.Services.AddScoped<IPromoCodeProductService, PromoCodeProductService>();
+    builder.Services.AddScoped<DemoDataSeeder>();
 
     builder.Services.AddControllers()
         .AddJsonOptions(options =>
@@ -267,6 +268,18 @@ try
         {
             // Redirects could be used to bypass the SSRF host check.
             AllowAutoRedirect = false
+        });
+
+    // Demo seeding downloads small product photos from Unsplash. If the host is
+    // unreachable, the seeder falls back to locally generated SVG placeholders.
+    builder.Services.AddHttpClient("demo-seed", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(45);
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("TreemiixDemoSeeder/1.0");
+        })
+        .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
+        {
+            AllowAutoRedirect = true
         });
 
     // Media is stored in PostgreSQL, so the request body limit matches the 5 MB
@@ -405,11 +418,14 @@ try
 
         await DbSeeder.SeedRolesAsync(dbContext, configuration);
 
-        // Demo catalog data must never be written to a production database.
+        // Demo catalog data must never be written to a production database automatically.
+        // In production an administrator can call POST /api/admin/demo/seed explicitly.
         if (app.Environment.IsDevelopment() &&
             configuration.GetValue("Database:SeedDemoData", true))
         {
-            await DbSeeder.SeedDemoDataAsync(dbContext);
+            var demoSeeder = scope.ServiceProvider.GetRequiredService<DemoDataSeeder>();
+            await demoSeeder.SeedAsync(
+                new DemoSeedOptions(configuration.GetValue("Database:DemoSeedProductCount", 60)));
         }
     }
 
