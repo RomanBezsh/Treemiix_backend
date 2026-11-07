@@ -23,7 +23,7 @@ namespace CloneAmazonBack.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "discount_type", new[] { "percentage", "fixed_amount" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "order_status", new[] { "pending", "processing", "shipped", "delivered", "cancelled", "refunded" });
             NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "product_status", new[] { "active", "inactive", "archived", "deleted" });
-            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "seller_status", new[] { "active", "inactive", "suspended", "pending_verification" });
+            NpgsqlModelBuilderExtensions.HasPostgresEnum(modelBuilder, "seller_status", new[] { "active", "inactive", "suspended", "pending_verification", "draft", "rejected" });
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
             modelBuilder.Entity("CloneAmazonBack.Models.Cart", b =>
@@ -722,11 +722,20 @@ namespace CloneAmazonBack.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<DateTime?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<string>("BankAccount")
                         .HasColumnType("text");
 
+                    b.Property<int>("BusinessType")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("CommissionRate")
                         .HasColumnType("numeric");
+
+                    b.Property<string>("Country")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -737,11 +746,23 @@ namespace CloneAmazonBack.Migrations
                     b.Property<string>("LegalAddress")
                         .HasColumnType("text");
 
+                    b.Property<string>("LegalName")
+                        .HasColumnType("text");
+
                     b.Property<string>("LogoUrl")
                         .HasColumnType("text");
 
+                    b.Property<int>("OnboardingStep")
+                        .HasColumnType("integer");
+
                     b.Property<decimal>("Rating")
                         .HasColumnType("numeric");
+
+                    b.Property<DateTime?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("text");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
@@ -752,6 +773,21 @@ namespace CloneAmazonBack.Migrations
 
                     b.Property<string>("StoreSlug")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("SubscriptionPaidUntil")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("SubscriptionStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SupportEmail")
+                        .HasColumnType("text");
+
+                    b.Property<string>("SupportPhone")
                         .HasColumnType("text");
 
                     b.Property<string>("TaxNumber")

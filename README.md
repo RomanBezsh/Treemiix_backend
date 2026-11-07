@@ -70,6 +70,53 @@ Swagger доступен только в Development: `/swagger`.
 
 Защита от подбора пароля: после `Auth:MaxFailedLoginAttempts` неудачных попыток аккаунт блокируется на `Auth:LockoutMinutes` минут.
 
+## Продавцы
+
+Любой пользователь с подтверждённым email может открыть магазин. Онбординг устроен как
+упрощённый Seller Central: заявка заполняется по шагам, затем её проверяет администратор.
+
+| Метод | Endpoint | Описание |
+|---|---|---|
+| GET | `/api/sellers/plans` | тариф продавца (цена из конфига) |
+| GET | `/api/sellers/me` | свой seller account и текущий статус |
+| POST | `/api/sellers/onboarding/start` | начать онбординг, выдаёт роль `Seller` и новые токены |
+| PUT | `/api/sellers/onboarding/business` | данные бизнеса |
+| PUT | `/api/sellers/onboarding/storefront` | название, slug, описание, логотип |
+| PUT | `/api/sellers/onboarding/payout` | реквизиты для выплат |
+| POST | `/api/sellers/onboarding/submit` | отправить заявку на проверку |
+| GET | `/api/admin/sellers?status=PendingVerification` | очередь заявок (только Admin) |
+| POST | `/api/admin/sellers/{id}/approve` | одобрить магазин |
+| POST | `/api/admin/sellers/{id}/reject` | отклонить с причиной |
+| POST | `/api/admin/sellers/{id}/suspend` | заморозить |
+| POST | `/api/admin/sellers/{id}/reactivate` | вернуть в работу |
+| POST | `/api/admin/sellers/{id}/subscription/paid` | отметить подписку оплаченной |
+
+Статусы: `Draft` → `PendingVerification` → `Active` / `Rejected`, плюс `Suspended` и `Inactive`.
+Пока магазин не `Active` или подписка не оплачена, продавец не может публиковать товары.
+
+`/api/sellers/me` и ответы онбординга возвращают владельцу его приватные поля
+(`taxNumber`, `legalAddress`, `bankAccount`), чтобы фронтенд мог восстановить шаги
+после перезагрузки. Публичные `/api/sellers` и `/api/sellers/{id}` эти поля не отдают.
+
+Биллинг на первом этапе ручной: при одобрении заявки подписка активируется на
+`Seller:Subscription:PeriodDays` дней, продление админ отмечает через
+`/api/admin/sellers/{id}/subscription/paid`. Stripe можно подключить позже без изменения
+остального флоу.
+
+Цена и период тарифа задаются в конфиге:
+
+```json
+"Seller": {
+  "CommissionRate": 0.10,
+  "Subscription": {
+    "PlanName": "Professional",
+    "MonthlyPrice": 39.99,
+    "Currency": "USD",
+    "PeriodDays": 30
+  }
+}
+```
+
 ## Отправка писем
 
 Коды подтверждения и сброса пароля отправляются через `IEmailSender`.

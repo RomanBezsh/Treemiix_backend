@@ -286,6 +286,24 @@ public class AuthService : IAuthService
         };
     }
 
+    public async Task<AuthResponse> IssueTokensForUserAsync(Guid userId)
+    {
+        var user = await _context.Users
+            .Include(u => u.UserRole)
+            .FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (user is null)
+            throw new UnauthorizedAccessException("User was not found");
+
+        if (!user.IsActive)
+            throw new UnauthorizedAccessException("Account is disabled");
+
+        if (user.UserRole is null)
+            throw new InvalidOperationException("User role was not found");
+
+        return await IssueTokensAsync(user, user.UserRole.Name);
+    }
+
     public async Task<bool> LogoutAsync(LogoutRequest request)
     {
         var hash = HashToken(request.RefreshToken);

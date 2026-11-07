@@ -9,6 +9,7 @@ public interface IAuthService
     Task<bool> ConfirmEmailAsync(ConfirmEmailRequest request);
     Task<bool> ResendConfirmationAsync(ResendConfirmationRequest request);
     Task<AuthResponse> RefreshAsync(RefreshTokenRequest request);
+    Task<AuthResponse> IssueTokensForUserAsync(Guid userId);
     Task<bool> LogoutAsync(LogoutRequest request);
     Task ChangePasswordAsync(Guid userId, ChangePasswordRequest request);
     Task ForgotPasswordAsync(ForgotPasswordRequest request);

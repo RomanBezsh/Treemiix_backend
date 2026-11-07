@@ -33,7 +33,46 @@ public static class DbSeeder
 
         await context.SaveChangesAsync();
 
+        await BackfillSellerRolesAsync(context);
         await SeedDefaultAdminAsync(context, configuration);
+    }
+
+    /// <summary>
+    /// Older databases could contain sellers whose users still had the User role.
+    /// Seller endpoints require the Seller role, so repair those rows on startup.
+    /// </summary>
+    private static async Task BackfillSellerRolesAsync(AppDbContext context)
+    {
+        var sellerRole = await context.UserRoles
+            .FirstOrDefaultAsync(r => r.Name == Roles.Seller);
+
+        if (sellerRole is null)
+            return;
+
+        var sellerUserIds = await context.Sellers
+            .Select(s => s.UserId)
+            .ToListAsync();
+
+        if (sellerUserIds.Count == 0)
+            return;
+
+        var users = await context.Users
+            .Include(u => u.UserRole)
+            .Where(u => sellerUserIds.Contains(u.Id))
+            .ToListAsync();
+
+        var changed = false;
+        foreach (var user in users)
+        {
+            if (user.UserRole?.Name is Roles.Admin or Roles.Seller)
+                continue;
+
+            user.UserRoleId = sellerRole.Id;
+            changed = true;
+        }
+
+        if (changed)
+            await context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -178,9 +217,16 @@ public static class DbSeeder
             UserId = demoUserId,
             StoreName = "Treemiix Official Store",
             StoreSlug = "treemiix-official",
+            BusinessType = SellerBusinessType.Company,
+            LegalName = "Treemiix Demo LLC",
+            Country = "US",
+            SupportEmail = "support@treemiix.example",
             Rating = 5.0m,
             Status = SellerStatus.Active,
             CommissionRate = 0.10m,
+            OnboardingStep = 4,
+            ApprovedAt = DateTime.UtcNow,
+            SubscriptionStatus = SellerSubscriptionStatus.Active,
             CreatedAt = DateTime.UtcNow
         });
 

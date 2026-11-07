@@ -2,34 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace CloneAmazonBack.Models.Dtos;
 
-public record CreateSellerRequest(
-    [param: Required]
-    [param: StringLength(100, MinimumLength = 2)]
-    string StoreName,
-
-    [param: Required]
-    [param: StringLength(100, MinimumLength = 2)]
-    string StoreSlug,
-
-    [param: StringLength(500)]
-    string? LogoUrl,
-
-    [param: StringLength(2000)]
-    string? Description,
-
-    [param: StringLength(50)]
-    string? TaxNumber,
-
-    [param: StringLength(300)]
-    string? LegalAddress,
-
-    [param: StringLength(100)]
-    string? BankAccount,
-
-    [param: Range(typeof(decimal), "0", "100")]
-    decimal CommissionRate
-);
-
 public record CreateCategoryRequest(
     Guid? ParentId,
 

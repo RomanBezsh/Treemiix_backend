@@ -129,6 +129,6 @@ public class ProductsController : ControllerBase
     private async Task<Seller?> GetOwnSellerAsync()
     {
         var seller = await _sellerService.GetByUserAsync(User.GetUserId());
-        return seller is { Status: SellerStatus.Active } ? seller : null;
+        return seller is { CanSell: true } ? seller : null;
     }
 }

@@ -13,10 +13,12 @@ namespace CloneAmazonBack.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IOrderService _orderService;
+    private readonly ISellerService _sellerService;
 
-    public OrdersController(IOrderService orderService)
+    public OrdersController(IOrderService orderService, ISellerService sellerService)
     {
         _orderService = orderService;
+        _sellerService = sellerService;
     }
 
     [HttpGet]
@@ -26,6 +28,10 @@ public class OrdersController : ControllerBase
 
         if (User.IsInRole(Roles.Seller) && !User.IsInRole(Roles.Admin))
         {
+            var seller = await _sellerService.GetByUserAsync(userId);
+            if (seller is null || !seller.CanSell)
+                return Forbid();
+
             var orders = await _orderService.GetForSellerAsync(userId);
             return Ok(orders);
         }
