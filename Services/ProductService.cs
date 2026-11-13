@@ -16,21 +16,92 @@ public class ProductService : IProductService
         _context = context;
     }
 
-    public async Task<List<Product>> GetAllAsync(Guid? categoryId, Guid? sellerId, bool? isActive)
+    public async Task<List<ProductListItemResponse>> GetAllAsync(Guid? categoryId, Guid? sellerId, bool? isActive)
     {
         var products = await _context.Products
-            .Include(p => p.Category)
-            .Include(p => p.Seller)
-            .Include(p => p.Galleries)
-            .Include(p => p.AttributeValues)
             .WhereIf(categoryId, p => p.CategoryId == categoryId!.Value)
             .WhereIf(sellerId, p => p.SellerId == sellerId!.Value)
             .WhereIf(isActive, p => p.IsActive == isActive!.Value)
+            .Select(p => new ProductListItemResponse(
+                p.Id,
+                p.Name,
+                p.Slug,
+                p.SellerId,
+                p.CategoryId,
+                p.Price,
+                p.OldCost,
+                p.Rating,
+                p.Stock,
+                p.Description,
+                p.IsActive,
+                p.CreatedAt,
+                p.UpdatedAt,
+                p.Status,
+                p.Sku,
+                p.Asin,
+                p.ItemModelNumber,
+                p.Manufacturer,
+                p.CountryOfOrigin,
+                p.ProductDimensions,
+                p.ItemWeight,
+                p.WarrantyInfo,
+                p.Features,
+                p.Binding,
+                p.ReleaseDate,
+                new ProductSellerSummary(
+                    p.Seller.Id,
+                    p.Seller.UserId,
+                    p.Seller.StoreName,
+                    p.Seller.StoreSlug,
+                    p.Seller.LogoUrl,
+                    p.Seller.Description,
+                    p.Seller.BusinessType,
+                    p.Seller.LegalName,
+                    p.Seller.Country,
+                    p.Seller.SupportEmail,
+                    p.Seller.SupportPhone,
+                    p.Seller.Rating,
+                    p.Seller.Status,
+                    p.Seller.CommissionRate,
+                    p.Seller.OnboardingStep,
+                    p.Seller.SubmittedAt,
+                    p.Seller.ApprovedAt,
+                    p.Seller.RejectedAt,
+                    p.Seller.RejectionReason,
+                    p.Seller.SubscriptionStatus,
+                    p.Seller.SubscriptionPaidUntil,
+                    p.Seller.CreatedAt),
+                new ProductCategorySummary(
+                    p.Category.Id,
+                    p.Category.ParentId,
+                    p.Category.Name,
+                    p.Category.Slug,
+                    p.Category.Path,
+                    p.Category.SortOrder,
+                    p.Category.IsActive),
+                p.Galleries
+                    .Select(g => new ProductGalleryResponse(g.Id, g.ProductId, g.Path, g.SortOrder, g.IsMain))
+                    .ToList(),
+                p.AttributeValues
+                    .Select(a => new ProductAttributeValueResponse(a.Id, a.ProductId, a.NameAttr, a.Value))
+                    .ToList()))
             .ToListAsync();
 
-        await FillRatingsAsync(products);
+        if (products.Count == 0) return products;
 
-        return products;
+        // Same rule as FillRatingsAsync: the review average overrides the stored rating.
+        var ids = products.Select(p => p.Id).ToList();
+        var averages = await _context.ProductReviews
+            .Where(r => ids.Contains(r.ProductId))
+            .GroupBy(r => r.ProductId)
+            .Select(g => new { ProductId = g.Key, Avg = g.Average(r => r.Rating) })
+            .ToDictionaryAsync(a => a.ProductId, a => a.Avg);
+
+        return products
+            .Select(p => averages.TryGetValue(p.Id, out var avg)
+                ? p with { Rating = (int)Math.Round(avg) }
+                : p)
+            .ToList();
     }
 
     public async Task<Product?> GetByIdAsync(Guid id)
