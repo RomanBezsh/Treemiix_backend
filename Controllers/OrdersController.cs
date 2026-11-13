@@ -26,6 +26,10 @@ public class OrdersController : ControllerBase
     {
         var userId = User.GetUserId();
 
+        // Admins see the orders of all users (optionally of one seller)
+        if (User.IsInRole(Roles.Admin))
+            return Ok(await _orderService.GetAllForAdminAsync(sellerId));
+
         if (User.IsInRole(Roles.Seller) && !User.IsInRole(Roles.Admin))
         {
             var seller = await _sellerService.GetByUserAsync(userId);
@@ -62,6 +66,24 @@ public class OrdersController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Creates orders from the current user's cart (one per seller), decrements stock,
+    /// applies the promo code and empties the cart in one save.
+    /// </summary>
+    [HttpPost("checkout")]
+    public async Task<IActionResult> Checkout(CheckoutRequest request)
+    {
+        try
+        {
+            var result = await _orderService.CheckoutAsync(User.GetUserId(), request);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
     }
 
